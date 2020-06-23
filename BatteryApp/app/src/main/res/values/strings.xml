@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">BatteryApp</string>
+    <string name="TextBatteryLevel">Battery level: N/A</string>
+    <string name="TextBatteryTemperature">Battery Temperature: N/A</string>
+    <string name="batteryInfo">Battery Stats for your device ...</string>
+    <string name="TextBatteryVoltage">Battery Voltage: N/A</string>
+    <string name="TextBatteryTechnology">Battery Technology: N/A</string>
+    <string name="TextBatteryStatus">Battery Status: N/A</string>
+    <string name="TextBatteryHelath">Battery Health: N/A</string>
+    <string name="TextUpdateTime">Last Updated: N/A</string>
+    <string name="TextWifiStatus">WiFi Disable</string>
+    <string name="TextDataStatus">Data Disable</string>
+    <string name="TextBluetoothStatus">Bluetooth Disable</string>
+    <string name="TextRAM">RAM Usage: N/A</string>
+    <string name="TextBrightness">Current Brightness: N/A</string>
+    <string name="TextCpuUsage">CPU Usage Estimation: N/A</string>
+    <string name="ButtonReadFreq">Read Freq</string>
+</resources>
