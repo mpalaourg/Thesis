@@ -1,8 +1,5 @@
 package com.example.batteryapp;
 
-import android.content.Context;
-import android.widget.Toast;
-
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
@@ -11,17 +8,20 @@ import java.text.DecimalFormat;
 import java.util.regex.Pattern;
 
 public class CPU_Info {
-    private static DecimalFormat df = new DecimalFormat("0.00");
+    // private static DecimalFormat df = new DecimalFormat("0.00");
 
-    /*
-     * Find the number of cores (usually 8). Then for each core, read the
-     * scaling current frequency, min and max frequncies.
-     * Return the CPU Usage for the system, total usage percent for the cores / number of cores.
+    /** Function to read the current usage percent of the cpu. For each core:
+     *      * read the current scaling frequency,
+     *      * read the mininum frequency,
+     *      * read the maximum frequency.
+     * The total usage percentage is the sum( individual_core_usage ) / number_of_cores.
+     * @return The total usage percentage.
      */
-    public float readCpuFreqNow(){
+    public float readCpuPercentNow(){
+        // MainActivity currActivity = new MainActivity();
+        // String output = "";
+
         File[] cpuFiles = getCPUs(); // Get number of CPUs
-        MainActivity currActivity = new MainActivity();
-        String output = "";
         float totalPercent = 0;
         String scaling_cur_freq = "";
         String cpuinfo_min_freq = "";
@@ -45,26 +45,29 @@ public class CPU_Info {
             cpuinfo_min_freq = ( cpuinfo_min_freq.equals("") ) ? "0" : cpuinfo_min_freq;
             cpuinfo_max_freq = ( cpuinfo_max_freq.equals("") ) ? "0" : cpuinfo_max_freq;
 
-            output = output + myFormat(scaling_cur_freq, cpuinfo_min_freq, cpuinfo_max_freq);
+            // output = output + myFormat(scaling_cur_freq, cpuinfo_min_freq, cpuinfo_max_freq);
             totalPercent += getUsage(scaling_cur_freq, cpuinfo_min_freq, cpuinfo_max_freq);
-            output = ( (i % 2) != 0) ? output + "\n" : output + " | " ;
+            // output = ( (i % 2) != 0) ? output + "\n" : output + " | " ;
         }
-        currActivity.setTempText(output);
+        // currActivity.setTempText(output);
         return totalPercent / cpuFiles.length;
     }
 
     /* Debug function to check if frequencies run as expected. */
-    private String myFormat(String cur_freq, String cpu_min_freq, String cpu_max_freq){
+    /*private String myFormat(String cur_freq, String cpu_min_freq, String cpu_max_freq){
         float freq = (float) Integer.valueOf(cur_freq) / (1000 * 1000);
         float min_freq = (float) Integer.valueOf(cpu_min_freq) / (1000 * 1000);
         float max_freq = (float) Integer.valueOf(cpu_max_freq) / (1000 * 1000);
         String currFormat = String.format( "%s [%s - %s]", df.format(freq), df.format(min_freq), df.format(max_freq));
         return currFormat;
-    }
+    }*/
 
-    /*
-     * From the current scaling frequency, find the percentage of usage
-     * between min_freq and max_freq.
+    /** Function to get the percentage of usage between min and max frequency.
+     * Must be called for each core of the CPU.
+     * @param cur_freq      -> String with the current scaling frequency of the core.
+     * @param cpu_min_freq  -> String with the min frequency of the core.
+     * @param cpu_max_freq  -> String with the max frequency of the core.
+     * @return percent      -> Float contains the usage percentage.
      */
     private float getUsage(String cur_freq, String cpu_min_freq, String cpu_max_freq){
         float freq     = (float) Integer.valueOf(cur_freq) / (1000 * 1000);
@@ -77,9 +80,9 @@ public class CPU_Info {
         return percent * 100;
     }
 
-    /*
-     * Get file list of the pattern
-     * /sys/devices/system/cpu/cpu[0..9]
+    /**
+     * Get file list of the pattern /sys/devices/system/cpu/cpu[0..9]
+     * @return files -> File array with the files matched the above pattern.
      */
     private File[] getCPUs(){
         class CpuFilter implements FileFilter {
@@ -97,8 +100,10 @@ public class CPU_Info {
         return files;
     }
 
-    /*
-     * Run the 'cat' command to read the file 'f' for the frequencies
+    /** Function to read the files associated with each core.
+     * For reading them the cat command will be used
+     * @param f -> String with the name of each file.
+     * @return the content of each file
      */
     private String cmdCat(String f){
         String[] command = {"cat", f};

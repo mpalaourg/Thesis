@@ -19,6 +19,11 @@ public class Other_Stats {
 
     private static DecimalFormat df = new DecimalFormat("0.00");
 
+    /**
+     * Constructor for the Other_Stats class. Context must be initialized so getSystemService can run
+     * outside the Main Activity.
+     * @param mContext
+     */
     public Other_Stats(Context mContext){
         this.mContext = mContext;
     }

@@ -185,8 +185,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="right"
                 android:layout_marginEnd="1dp"
-                android:text="Button"
-                android:textAlignment="center" />
+                android:text="Button" />
 
             <TextView
                 android:id="@+id/textTemp"
@@ -222,6 +221,14 @@
                 android:foregroundGravity="center"
                 android:src="@drawable/email_icon"
                 app:fabSize="normal" />
+
+            <TextView
+                android:id="@+id/UserID"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textSize="20sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/updateTime"
