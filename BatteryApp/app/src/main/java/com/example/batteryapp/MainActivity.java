@@ -2,24 +2,40 @@ package com.example.batteryapp;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.ActivityManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static TextView textSOC, textTemperature, textVoltage, textTechnology, textStatus, textHealth, textTime, textCpuUsage;
-    private static Button btnReadCpuFreq, btnStartService, btnStopService;
+    private static Button btnReadCpuFreq, btnSave, btnLoad;
     private static ProgressBar barCPU;
 
-    private static TextView textWifi, textData, textBluetooth, textBrightness, textRAM;
+    private static TextView textWifi, textData, textBluetooth, textBrightness, textRAM, mEditText, textTemp;
 
     private final Battery_Receiver myBroadcast  = new Battery_Receiver();
     private final CPU_Info         myCPUInfo    = new CPU_Info();
     private final Other_Stats      myOtherStats = new Other_Stats(this);
+
+    Intent myServiceIntent;
+    private MyService myService;
 
     /* Called when the activity is first created. */
     @Override
@@ -27,6 +43,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         System.out.println("Inside Create");
         setContentView(R.layout.activity_main);
+
+        myService = new MyService();
+        myServiceIntent = new Intent(this, myService.getClass());
+        if (!isMyServiceRunning(myService.getClass())) {
+            startService(myServiceIntent);
+        }
 
         initializeComponents();
         // registerBatteryLevelReceiver();
@@ -36,23 +58,39 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         myOtherStats.getBrightness();
         myOtherStats.getAvailableRAM();
 
-        btnStartService.setOnClickListener( this );
-        btnStopService.setOnClickListener( this );
-
         // CPU Freq
         btnReadCpuFreq.setOnClickListener( this );
+        btnSave.setOnClickListener( this );
+        btnLoad.setOnClickListener( this );
+
+
+
+
+    }
+
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                Log.i ("Service status", "Running");
+                return true;
+            }
+        }
+        Log.i ("Service status", "Not running");
+        return false;
     }
 
     @Override
     public void onClick(View v) {
-        if (v == btnStartService){
-            startService( new Intent( this, MyService.class ));
-        } else if (v == btnStopService){
-            stopService( new Intent( this, MyService.class ));
-        } else if (v == btnReadCpuFreq){
+        if (v == btnReadCpuFreq){
             setCPUbar( (int) myCPUInfo.readCpuFreqNow() );
+        } else if (v == btnSave) {
+            saveFile();
+        } else if (v == btnLoad) {
+            loadFile();
         }
     }
+
 
     @Override
     protected void onStart() {
@@ -92,6 +130,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onDestroy();
         System.out.println("Inside Destroy");
         unregisterBatteryLevelReceiver();
+        stopService(myServiceIntent);
     }
 
     /* Register Battery receiver with intent filter */
@@ -108,6 +147,71 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         catch (Exception e){
             System.out.println("Receiver already unregistered!");
+        }
+    }
+
+    /* Create a file based on timestamp */
+    private void saveFile() {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+        String todayDate = dateFormat.format(new Date());
+
+        String FILE_NAME = todayDate + ".txt";
+        String text = "I' am a test file";
+        FileOutputStream fos = null;
+        try {
+            fos = openFileOutput(FILE_NAME, MODE_PRIVATE);
+            fos.write(text.getBytes());
+
+            Toast.makeText( this, "Saved to " + getFilesDir() + "/" + FILE_NAME, Toast.LENGTH_LONG).show();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    /* Read the files from internal storage and then delete them!*/
+    private void loadFile() {
+        FileInputStream fis = null;
+        String[] files = fileList();
+        for (int i = 0; i < files.length; i++) {
+            System.out.println(files[i]);
+        }
+        for (String FILE_NAME : files) {
+            try {
+                fis = openFileInput(FILE_NAME);
+                InputStreamReader isr = new InputStreamReader(fis);
+                BufferedReader br = new BufferedReader(isr);
+                StringBuilder sb = new StringBuilder();
+                String text;
+
+                while ((text = br.readLine()) != null) {
+                    sb.append(text).append("\n");
+                }
+
+                mEditText.setText(sb.toString());
+                deleteFile(FILE_NAME);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (fis != null) {
+                    try {
+                        fis.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
         }
     }
 
@@ -130,9 +234,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         textCpuUsage    = (TextView) findViewById(R.id.cpuUsage);
         barCPU          = (ProgressBar) findViewById(R.id.barCPU);
         btnReadCpuFreq  = (Button) findViewById(R.id.btnCPU);
+        btnSave         = (Button) findViewById(R.id.btnSave);
+        btnLoad         = (Button) findViewById(R.id.btnLoad);
+        mEditText       = (TextView) findViewById(R.id.textView);
+        textTemp        = (TextView) findViewById(R.id.textTemp);
 
-        btnStartService = (Button) findViewById(R.id.btnService);
-        btnStopService = (Button) findViewById(R.id.btnStopService);
     }
 
     /* Set text of the Text Views */
@@ -183,5 +289,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void setCPUUsage(int usage) { textCpuUsage.setText("CPU Usage Estimation: " + usage + "%"); }
+
+    public void setTempText(String text) {
+        textTemp.setText(text);
+    }
 
 }

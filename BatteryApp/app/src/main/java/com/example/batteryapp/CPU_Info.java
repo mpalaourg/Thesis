@@ -1,12 +1,17 @@
 package com.example.batteryapp;
 
+import android.content.Context;
+import android.widget.Toast;
+
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DecimalFormat;
 import java.util.regex.Pattern;
 
 public class CPU_Info {
+    private static DecimalFormat df = new DecimalFormat("0.00");
 
     /*
      * Find the number of cores (usually 8). Then for each core, read the
@@ -15,8 +20,8 @@ public class CPU_Info {
      */
     public float readCpuFreqNow(){
         File[] cpuFiles = getCPUs(); // Get number of CPUs
-
-        // String output = "";
+        MainActivity currActivity = new MainActivity();
+        String output = "";
         float totalPercent = 0;
         String scaling_cur_freq = "";
         String cpuinfo_min_freq = "";
@@ -40,22 +45,22 @@ public class CPU_Info {
             cpuinfo_min_freq = ( cpuinfo_min_freq.equals("") ) ? "0" : cpuinfo_min_freq;
             cpuinfo_max_freq = ( cpuinfo_max_freq.equals("") ) ? "0" : cpuinfo_max_freq;
 
-            //output = output + myFormat(scaling_cur_freq, cpuinfo_min_freq, cpuinfo_max_freq);
+            output = output + myFormat(scaling_cur_freq, cpuinfo_min_freq, cpuinfo_max_freq);
             totalPercent += getUsage(scaling_cur_freq, cpuinfo_min_freq, cpuinfo_max_freq);
-            //output = ( (i % 2) != 0) ? output + "\n" : output + " | " ;
+            output = ( (i % 2) != 0) ? output + "\n" : output + " | " ;
         }
-        //textTemp.setText(output);
+        currActivity.setTempText(output);
         return totalPercent / cpuFiles.length;
     }
 
     /* Debug function to check if frequencies run as expected. */
-    /*private String myFormat(String cur_freq, String cpu_min_freq, String cpu_max_freq){
+    private String myFormat(String cur_freq, String cpu_min_freq, String cpu_max_freq){
         float freq = (float) Integer.valueOf(cur_freq) / (1000 * 1000);
         float min_freq = (float) Integer.valueOf(cpu_min_freq) / (1000 * 1000);
         float max_freq = (float) Integer.valueOf(cpu_max_freq) / (1000 * 1000);
         String currFormat = String.format( "%s [%s - %s]", df.format(freq), df.format(min_freq), df.format(max_freq));
         return currFormat;
-    }*/
+    }
 
     /*
      * From the current scaling frequency, find the percentage of usage
@@ -65,8 +70,10 @@ public class CPU_Info {
         float freq     = (float) Integer.valueOf(cur_freq) / (1000 * 1000);
         float min_freq = (float) Integer.valueOf(cpu_min_freq) / (1000 * 1000);
         float max_freq = (float) Integer.valueOf(cpu_max_freq) / (1000 * 1000);
-        float percent  = (float) (freq - min_freq) / (max_freq - min_freq);
-
+        float percent  = (float) 0.0;
+        if (max_freq > min_freq){
+            percent = (float) (freq - min_freq) / (max_freq - min_freq);
+        }
         return percent * 100;
     }
 
