@@ -34,14 +34,12 @@ import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static TextView textSOC, textTemperature, textVoltage, textTechnology, textStatus, textHealth, textTime, textCpuUsage;
-    private static Button btnReadCpuFreq, btnSave, btnLoad;
+    private static Button btnSave, btnLoad;
     private static ProgressBar barCPU;
 
     private static TextView textWifi, textData, textBluetooth, textBrightness, textRAM, mEditText, textTemp, textUUID;
 
-    private final Battery_Receiver myBroadcast  = new Battery_Receiver();
     private final CPU_Info         myCPUInfo    = new CPU_Info();
-    private final Other_Stats      myOtherStats = new Other_Stats(this);
     private static String          userID;
 
     Intent myServiceIntent;
@@ -79,15 +77,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             startService(myServiceIntent);
         }
 
-        // registerBatteryLevelReceiver();
-
-        myOtherStats.getNetworkConnectivity();
-        myOtherStats.getBluetoothConnectivity();
-        myOtherStats.getBrightness();
-        myOtherStats.getAvailableRAM();
 
         // CPU Freq
-        btnReadCpuFreq.setOnClickListener( this );
         btnSave.setOnClickListener( this );
         btnLoad.setOnClickListener( this );
 
@@ -107,9 +98,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onClick(View v) {
-        if (v == btnReadCpuFreq){
-            setCPUbar( (int) myCPUInfo.readCpuPercentNow() );
-        } else if (v == btnSave) {
+        if (v == btnSave) {
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
             String todayDate = dateFormat.format(new Date());
 
@@ -130,53 +119,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onResume() {
         super.onResume();
         System.out.println("Inside Resume");
-        registerBatteryLevelReceiver();
-        btnReadCpuFreq.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                setCPUbar( (int) myCPUInfo.readCpuPercentNow() );
-            }
-        });
+        //registerBatteryLevelReceiver();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         System.out.println("Inside Pause");
-        unregisterBatteryLevelReceiver();
+        //unregisterBatteryLevelReceiver();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         System.out.println("Inside Stop");
-        unregisterBatteryLevelReceiver();
+      //  unregisterBatteryLevelReceiver();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        System.out.println("Inside Destroy");
-        unregisterBatteryLevelReceiver();
+        System.out.println("Inside Destroy of Activity. Calling StopService ...");
 
         stopService(myServiceIntent);
-    }
-
-    /* Register Battery receiver with intent filter */
-    private void registerBatteryLevelReceiver() {
-        // To know which intent to catch. 'ACTION_BATTERY_CHANGED'
-        IntentFilter batteryLevelFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        registerReceiver(myBroadcast, batteryLevelFilter);
-    }
-
-    /* Unregister Battery receiver */
-    private void unregisterBatteryLevelReceiver() {
-        try {
-            unregisterReceiver(myBroadcast);
-        }
-        catch (Exception e){
-            System.out.println("Receiver already unregistered!");
-        }
+        // myService.onDestroy();
     }
 
     /* Create a file with name "FILE_NAME" that contains "text" */
@@ -259,7 +225,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         textBrightness  = (TextView) findViewById(R.id.textBright);
         textCpuUsage    = (TextView) findViewById(R.id.cpuUsage);
         barCPU          = (ProgressBar) findViewById(R.id.barCPU);
-        btnReadCpuFreq  = (Button) findViewById(R.id.btnCPU);
         btnSave         = (Button) findViewById(R.id.btnSave);
         btnLoad         = (Button) findViewById(R.id.btnLoad);
         mEditText       = (TextView) findViewById(R.id.textView);

@@ -50,7 +50,7 @@ public class Other_Stats {
     }
 
     /* See if a bluetooth adapter is present and then check if is enable. */
-    public void getBluetoothConnectivity() {
+    /*public void getBluetoothConnectivity() {
         MainActivity currActivity = new MainActivity();
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
@@ -58,7 +58,7 @@ public class Other_Stats {
         } else if (mBluetoothAdapter.isEnabled()){
             currActivity.setBluetoothConnectivity("Bluetooth Enable", Color.GREEN);
         }
-    }
+    } */
 
     /* Read the available RAM for the system. */
     public void getAvailableRAM() {

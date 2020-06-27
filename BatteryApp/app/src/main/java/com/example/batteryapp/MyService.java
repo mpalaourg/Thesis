@@ -1,27 +1,47 @@
 package com.example.batteryapp;
 
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.IBinder;
+import android.provider.Settings;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 
+import java.text.DecimalFormat;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class MyService extends Service {
-    Timer timer = new Timer();
-    CPU_Info myCPUInfo = new CPU_Info();
+    private MainActivity currActivity;
+
+    private Timer timer;
+    private CPU_Info myCPUInfo;
+    private Battery_Receiver myBroadcast ;
+
+    private int level = 0, status, health;
+    private float temperature = 0.0f, voltage = 0.0f;
+    private String technology;
+
+    private final  int MB_CONVERSION = 1000 * 1000;
+    private static boolean wifiConnected = false;   // Whether there is a Wi-Fi connection.
+    private static boolean mobileConnected = false; // Whether there is a mobile connection.
+    private static DecimalFormat df = new DecimalFormat("0.00");
+
 
     /** Function which is called at the creation of the Service. For androids version after O
      *  will a create a foreground service with a notification, where the proper notification channel
@@ -30,6 +50,11 @@ public class MyService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        timer = new Timer();
+        myCPUInfo = new CPU_Info();
+        myBroadcast  = new Battery_Receiver();
+        registerBatteryLevelReceiver();
+
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O)
             startMyOwnForeground();
         else
@@ -46,12 +71,31 @@ public class MyService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
-        final MainActivity currActivity = new MainActivity();
+
+        currActivity = new MainActivity();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
                 int usage = getCPUUsage();
                 currActivity.setCPUbar(usage);
+
+                level = myBroadcast.getLevel();
+                status = myBroadcast.getStatus();
+                health = myBroadcast.getHealth();
+                temperature = myBroadcast.getTemperature();
+                voltage     = myBroadcast.getVoltage();
+                technology  = myBroadcast.getTechnology();
+                System.out.println(String.format("%d %d %d | %f %f | %s | %d", health, level, status, temperature, voltage, technology, usage));
+
+                currActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        getNetworkConnectivity();
+                        getBluetoothConnectivity();
+                        getAvailableRAM();
+                        getBrightness();
+                    }
+                });
             }
         }, 0, 10000);
         return START_STICKY;
@@ -69,8 +113,23 @@ public class MyService extends Service {
      */
     @Override
     public void onDestroy() {
+        System.out.println("Inside on Destroy of Service");
+        unregisterBatteryLevelReceiver();
+        timerCancel();
+        stopForeground(true);
+        stopSelf();
         super.onDestroy();
-        timer.cancel();
+    }
+
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        System.out.println("Inside on TaskRemoved of Service");
+        unregisterBatteryLevelReceiver();
+        timerCancel();
+        stopForeground(true);
+        stopSelf();
+        super.onTaskRemoved(rootIntent);
     }
 
     /** Function to used if clients want to bind the service.
@@ -120,11 +179,118 @@ public class MyService extends Service {
         startForeground(2, notification);
     }
 
+    /**
+     * Function to register Battery BroadcastReceiver with intent filter.
+     */
+    private void registerBatteryLevelReceiver() {
+        // To know which intent to catch. 'ACTION_BATTERY_CHANGED'
+        IntentFilter batteryLevelFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        registerReceiver(myBroadcast, batteryLevelFilter);
+    }
+
+    /**
+     * Function to unregister (if necessary) the Battery BroadcastReceiver.
+     *
+     */
+    private void unregisterBatteryLevelReceiver() {
+        try {
+            unregisterReceiver(myBroadcast);
+        }
+        catch (Exception e){
+            System.out.println("Receiver already unregistered!");
+        }
+    }
+
+    /**
+     * Function to cancel (if necessary) the timer.
+     *
+     */
+    private void timerCancel() {
+        try {
+            timer.cancel();
+            timer.purge();
+        }
+        catch (Exception e){
+            System.out.println("Timer already cancelled!");
+        }
+    }
 
     public int getCPUUsage() {
         int cpuUse = (int) myCPUInfo.readCpuPercentNow();
         System.out.println("Current CPU Usage: " + cpuUse + " - " + System.currentTimeMillis());
         return cpuUse;
+    }
+
+    /**
+     * Check if the WiFi is enable OR the Cellular Data.
+     */
+    public void getNetworkConnectivity() {
+        ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeInfo = connMgr.getActiveNetworkInfo();
+
+        if (activeInfo != null && activeInfo.isConnected()) {
+            wifiConnected = activeInfo.getType() == ConnectivityManager.TYPE_WIFI;
+            mobileConnected = activeInfo.getType() == ConnectivityManager.TYPE_MOBILE;
+        } else {
+            wifiConnected = false;
+            mobileConnected = false;
+        }
+        if (wifiConnected) {
+            currActivity.setWiFiConnectivity("WiFI Enable", Color.GREEN);
+            currActivity.setCellularConnectivity("Data Disable", Color.BLACK);
+        }
+        if (mobileConnected) {
+            currActivity.setWiFiConnectivity("WiFI Disable", Color.BLACK);
+            currActivity.setCellularConnectivity("Data Enable", Color.GREEN);
+        }
+    }
+
+    /**
+     * See if a bluetooth adapter is present and then check if is enable.
+     */
+    public void getBluetoothConnectivity() {
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        if (mBluetoothAdapter == null) {
+            currActivity.setBluetoothConnectivity("No Bluetooth Support", Color.RED);
+        } else if (mBluetoothAdapter.isEnabled()){
+            currActivity.setBluetoothConnectivity("Bluetooth Enable", Color.GREEN);
+        } else {
+            currActivity.setBluetoothConnectivity("Bluetooth Disable", Color.BLACK);
+        }
+    }
+
+    /**
+     * Read the available RAM for the system.
+     */
+    public void getAvailableRAM() {
+        // RAM reading
+        /* refer to: https://developer.android.com/reference/android/app/ActivityManager.MemoryInfo */
+        /* The total memory accessible by the kernel. This is basically the RAM size of the device,
+            not including below-kernel fixed allocations like DMA buffers, RAM for the baseband CPU, etc.
+            The available memory on the system. This number should not be considered absolute: due to the nature of the kernel,
+            a significant portion of this memory is actually in use and needed for the overall system to run well. */
+
+        ActivityManager.MemoryInfo myMemoryInfo = new ActivityManager.MemoryInfo();
+        ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        activityManager.getMemoryInfo(myMemoryInfo);
+        double availMemMB = (double) myMemoryInfo.availMem / MB_CONVERSION;
+        //Percentage can be calculated for API 16+ ~ TotalMem return bytes, convert to MBytes.
+        double totalMemMB = (double) myMemoryInfo.totalMem / MB_CONVERSION;
+        double percentAvail = availMemMB / totalMemMB  * 100.0;
+        currActivity.setAvailableRam("Available RAM: " + df.format(availMemMB) + " MB (" + df.format(percentAvail) + "%)");
+    }
+
+    /**
+     * Get the screen current brightness
+     */
+    public void getBrightness() {
+        int brightness = Settings.System.getInt(
+                getContentResolver(),
+                Settings.System.SCREEN_BRIGHTNESS,
+                0
+        );
+        currActivity.setBrightness("Current Brightness: " + brightness);
     }
 
 }

@@ -8,21 +8,27 @@ import android.os.BatteryManager;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Observable;
 
 import android.os.Bundle;
+import android.provider.SyncStateContract;
 
 public class Battery_Receiver extends BroadcastReceiver {
+
+    private int level = 0, status, health;
+    private float temperature = 0.0f, voltage = 0.0f;
+    private String technology;
+
     @Override
     public void onReceive(Context context, Intent intent) {
         MainActivity currActivity = new MainActivity();
         String text = "";
         boolean isPresent = intent.getBooleanExtra(BatteryManager.EXTRA_PRESENT, false);
-        String technology = intent.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY);
+        technology = intent.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY);
         int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1); // integer containing the maximum battery level.
-        int health = intent.getIntExtra(BatteryManager.EXTRA_HEALTH, 0);
-        int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, 0);
+        health = intent.getIntExtra(BatteryManager.EXTRA_HEALTH, 0);
+        status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, 0);
         int rawLevel = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1); // integer field containing the current battery level, from 0 to scale
-        int level = 0;
         int rawVolt = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1);
         int rawTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
         DateFormat df = new SimpleDateFormat("EEE, d MMM yyyy, HH:mm:ss");
@@ -37,21 +43,38 @@ public class Battery_Receiver extends BroadcastReceiver {
         }
 
         if (rawTemp >=0){
-            float temperature = (float) rawTemp / 10;
+            temperature = (float) rawTemp / 10;
             text = "Battery Temperature: " + temperature+ " \u00B0" + "C";
             currActivity.setBatteryTemp(text);
         }
 
         if (rawVolt >=0){
-            float voltage = (float) rawVolt / 1000;
+            voltage = (float) rawVolt / 1000;
             text = "Battery Voltage: " + voltage + " V";
             currActivity.setBatteryVolt(text);
         }
+
+        this.setStatus(status);
+        this.setHealth(health);
+        this.setTechnology(technology);
+        this.setVoltage(voltage);
+        this.setTemperature(temperature);
+        this.setLevel(level);
 
         currActivity.setBatteryTech("Battery Technology: " + technology);
         currActivity.setBatteryStatus("Battery Status: " + getStatusString(status));
         currActivity.setBatteryHealth("Battery Health: " + getHealthString(health));
         currActivity.setUpdateTime("Last Updated: " + date);
+
+        /* Intent updateIntent = new Intent("UpdateValues");
+        updateIntent.putExtra("level", level);
+        updateIntent.putExtra("status", status);
+        updateIntent.putExtra("health", health);
+        updateIntent.putExtra("temperature", temperature);
+        updateIntent.putExtra("voltage", voltage);
+        updateIntent.putExtra("technology", technology);
+        context.sendBroadcast(updateIntent); */
+
     }
 
     //Get Health of battery
@@ -99,4 +122,17 @@ public class Battery_Receiver extends BroadcastReceiver {
         return statusString;
     }
 
+    public void setLevel(int level) { this.level = level;}
+    public void setStatus(int status) { this.status = status; }
+    public void setHealth(int health) { this.health = health;}
+    public void setTemperature(float temperature) { this.temperature = temperature; }
+    public void setVoltage(float voltage) { this.voltage = voltage; }
+    public void setTechnology(String technology) { this.technology = technology; }
+
+    public int getLevel() { return level; }
+    public int getStatus() { return status; }
+    public int getHealth() { return health; }
+    public float getTemperature() { return temperature; }
+    public float getVoltage() { return voltage; }
+    public String getTechnology() { return technology; }
 }
