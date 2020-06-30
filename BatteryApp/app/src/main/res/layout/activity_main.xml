@@ -184,38 +184,20 @@
                 android:text="@string/TextCpuUsage" />
 
             <TextView
-                android:id="@+id/textTemp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="TextView2" />
-
-            <Button
-                android:id="@+id/btnSave"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Save" />
-
-            <Button
-                android:id="@+id/btnLoad"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Load" />
-
-            <TextView
                 android:id="@+id/textView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="TextView" />
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/fab"
-                android:layout_width="54dp"
-                android:layout_height="55dp"
+                android:id="@+id/btnUpload"
+                android:layout_width="61dp"
+                android:layout_height="56dp"
                 android:layout_gravity="center"
                 android:layout_marginBottom="25dp"
                 android:background="@android:color/holo_blue_bright"
                 android:foregroundGravity="center"
-                android:src="@drawable/email_icon"
+                android:src="@android:drawable/stat_sys_upload"
                 app:fabSize="normal" />
 
             <TextView

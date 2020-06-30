@@ -23,19 +23,27 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class MyService extends Service {
     private MainActivity currActivity;
+    private String userID, FILE_NAME;
 
     private Timer timer;
     private CPU_Info myCPUInfo;
     private Battery_Receiver myBroadcast ;
+    private IOHelper myIOHelper;
 
-    private int level = 0, status, health;
+    private int level = 0, status, health, usage;
     private float temperature = 0.0f, voltage = 0.0f;
     private String technology;
+    private boolean bluetooth, wifi, cellular;
+    private double   RAM;
+    private int     brightness;
+    private long    timestamp;
 
     private final  int MB_CONVERSION = 1000 * 1000;
     private static boolean wifiConnected = false;   // Whether there is a Wi-Fi connection.
@@ -50,9 +58,20 @@ public class MyService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        currActivity = new MainActivity();
+        userID = currActivity.getUUID();
         timer = new Timer();
         myCPUInfo = new CPU_Info();
         myBroadcast  = new Battery_Receiver();
+        myIOHelper = new IOHelper(this);;
+
+        // myIOHelper.deleteFile();
+        /* Create the file for the current use */
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+        String todayDate = dateFormat.format(new Date());
+        FILE_NAME = userID + "-" + todayDate; //+ ".txt";
+
+        myIOHelper.saveFile(FILE_NAME, "");
         registerBatteryLevelReceiver();
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O)
@@ -72,33 +91,55 @@ public class MyService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
 
-        currActivity = new MainActivity();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                int usage = getCPUUsage();
-                currActivity.setCPUbar(usage);
-
+                timestamp = System.currentTimeMillis();
+                usage = getCPUUsage();
                 level = myBroadcast.getLevel();
                 status = myBroadcast.getStatus();
                 health = myBroadcast.getHealth();
                 temperature = myBroadcast.getTemperature();
                 voltage     = myBroadcast.getVoltage();
                 technology  = myBroadcast.getTechnology();
-                System.out.println(String.format("%d %d %d | %f %f | %s | %d", health, level, status, temperature, voltage, technology, usage));
+
+                wifi     = getWiFiConnectivity();
+                cellular = getCellularConnectivity();
+                bluetooth = getBluetoothConnectivity();
+                RAM = Math.round( getAvailableRAM() * 100.0) / 100.0;
+                brightness = getBrightness();
 
                 currActivity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        getNetworkConnectivity();
-                        getBluetoothConnectivity();
-                        getAvailableRAM();
-                        getBrightness();
+                        if (wifi){
+                            currActivity.setWiFiConnectivity("WiFI Enable", Color.GREEN);
+                            currActivity.setCellularConnectivity("Data Disable", Color.BLACK);
+                        }else if (cellular){
+                            currActivity.setWiFiConnectivity("WiFI Disable", Color.BLACK);
+                            currActivity.setCellularConnectivity("Data Enable", Color.GREEN);
+                        } else {
+                            currActivity.setWiFiConnectivity("WiFI Disable", Color.BLACK);
+                            currActivity.setCellularConnectivity("Data Disable", Color.BLACK);
+                        }
+                        if (bluetooth){
+                            currActivity.setBluetoothConnectivity("Bluetooth Enable", Color.GREEN);
+                        } else {
+                            currActivity.setBluetoothConnectivity("Bluetooth Disable", Color.BLACK);
+                        }
+                        currActivity.setAvailableRam("Available RAM: " + df.format(RAM) + "%");
+                        currActivity.setBrightness("Current Brightness: " + brightness);
+                        currActivity.setCPUbar(usage); // that can be outside the runnable
                     }
                 });
+                String temp = toJsonString(userID, level, temperature, voltage, technology, status, health, usage, bluetooth, wifi, cellular, RAM, brightness, timestamp);
+                System.out.println(timestamp);
+                myIOHelper.saveFile(FILE_NAME, temp);
+
             }
         }, 0, 10000);
-        return START_STICKY;
+        return START_NOT_STICKY;
+        //return START_STICKY;
     }
 
     /* In case the service is deleted or crashes some how
@@ -121,7 +162,6 @@ public class MyService extends Service {
         super.onDestroy();
     }
 
-
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         System.out.println("Inside on TaskRemoved of Service");
@@ -142,7 +182,8 @@ public class MyService extends Service {
         return null;
     }
 
-    /** Function to start my own Foreground Service. At first, the channel for the notification
+    /**
+     * Function to start my own Foreground Service. At first, the channel for the notification
      * must be initialized. Then, the notification is created, with proper title, icons and an activity
      * intent, so the user can by clicking the notification to open the (already open) app.
      */
@@ -180,7 +221,7 @@ public class MyService extends Service {
     }
 
     /**
-     * Function to register Battery BroadcastReceiver with intent filter.
+     * Function to register the Battery BroadcastReceiver with intent filter.
      */
     private void registerBatteryLevelReceiver() {
         // To know which intent to catch. 'ACTION_BATTERY_CHANGED'
@@ -190,7 +231,6 @@ public class MyService extends Service {
 
     /**
      * Function to unregister (if necessary) the Battery BroadcastReceiver.
-     *
      */
     private void unregisterBatteryLevelReceiver() {
         try {
@@ -203,7 +243,6 @@ public class MyService extends Service {
 
     /**
      * Function to cancel (if necessary) the timer.
-     *
      */
     private void timerCancel() {
         try {
@@ -215,55 +254,70 @@ public class MyService extends Service {
         }
     }
 
+    /**
+     * Function to read the CPU Usage estimation.
+     * @return (int) CPU Usage estimation
+     */
     public int getCPUUsage() {
         int cpuUse = (int) myCPUInfo.readCpuPercentNow();
-        System.out.println("Current CPU Usage: " + cpuUse + " - " + System.currentTimeMillis());
         return cpuUse;
     }
 
     /**
-     * Check if the WiFi is enable OR the Cellular Data.
+     * Check if the WiFi is enable.
+     * @return (boolean) True if Wifi is Enable. False otherwise.
      */
-    public void getNetworkConnectivity() {
+    public boolean getWiFiConnectivity() {
         ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeInfo = connMgr.getActiveNetworkInfo();
 
         if (activeInfo != null && activeInfo.isConnected()) {
             wifiConnected = activeInfo.getType() == ConnectivityManager.TYPE_WIFI;
-            mobileConnected = activeInfo.getType() == ConnectivityManager.TYPE_MOBILE;
         } else {
             wifiConnected = false;
-            mobileConnected = false;
         }
-        if (wifiConnected) {
-            currActivity.setWiFiConnectivity("WiFI Enable", Color.GREEN);
-            currActivity.setCellularConnectivity("Data Disable", Color.BLACK);
-        }
-        if (mobileConnected) {
-            currActivity.setWiFiConnectivity("WiFI Disable", Color.BLACK);
-            currActivity.setCellularConnectivity("Data Enable", Color.GREEN);
-        }
+
+        return wifiConnected;
     }
 
     /**
-     * See if a bluetooth adapter is present and then check if is enable.
+     * Check if the Cellular Data are enable.
+     * @return (boolean) True if Cellular Data are Enable. False otherwise.
      */
-    public void getBluetoothConnectivity() {
+    public boolean getCellularConnectivity() {
+        ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeInfo = connMgr.getActiveNetworkInfo();
+
+        if (activeInfo != null && activeInfo.isConnected()) {
+            mobileConnected = activeInfo.getType() == ConnectivityManager.TYPE_MOBILE;
+        } else {
+            mobileConnected = false;
+        }
+
+        return mobileConnected;
+    }
+
+    /**
+     * See if the bluetooth adapter is present and then check if is enable.
+     * @return (boolean) True if Bluetooth is Enable. False otherwise.
+     */
+    public boolean getBluetoothConnectivity() {
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
         if (mBluetoothAdapter == null) {
-            currActivity.setBluetoothConnectivity("No Bluetooth Support", Color.RED);
+            return false;
         } else if (mBluetoothAdapter.isEnabled()){
-            currActivity.setBluetoothConnectivity("Bluetooth Enable", Color.GREEN);
+            return true;
         } else {
-            currActivity.setBluetoothConnectivity("Bluetooth Disable", Color.BLACK);
+            return false;
         }
     }
 
     /**
      * Read the available RAM for the system.
+     * @return (double) The amount of RAM available for the System.
      */
-    public void getAvailableRAM() {
+    public double getAvailableRAM() {
         // RAM reading
         /* refer to: https://developer.android.com/reference/android/app/ActivityManager.MemoryInfo */
         /* The total memory accessible by the kernel. This is basically the RAM size of the device,
@@ -278,20 +332,42 @@ public class MyService extends Service {
         //Percentage can be calculated for API 16+ ~ TotalMem return bytes, convert to MBytes.
         double totalMemMB = (double) myMemoryInfo.totalMem / MB_CONVERSION;
         double percentAvail = availMemMB / totalMemMB  * 100.0;
-        currActivity.setAvailableRam("Available RAM: " + df.format(availMemMB) + " MB (" + df.format(percentAvail) + "%)");
+
+        return percentAvail;
     }
 
     /**
-     * Get the screen current brightness
+     * Get the screen current brightness.
+     * @return (int) The current brightness of the Screen.
      */
-    public void getBrightness() {
+    public int getBrightness() {
         int brightness = Settings.System.getInt(
                 getContentResolver(),
                 Settings.System.SCREEN_BRIGHTNESS,
                 0
         );
-        currActivity.setBrightness("Current Brightness: " + brightness);
+        return brightness;
     }
 
+    /**
+     * Get as input all the data and transform them to string ready to be save to json file.
+     * @return (String) The json to be written.
+     */
+    public String toJsonString(String userID, int level, float temperature, float voltage, String technology, int status, int health, int usage, boolean bluetooth, boolean wifi, boolean cellular, double RAM, int brightness, long timestamp){
+        return "{ \"ID\": \"" + userID + "\",\n" +
+                " \"level\": " + level + ",\n" +
+                " \"temperature\": " + temperature + ",\n" +
+                " \"voltage\": " + voltage + ",\n" +
+                " \"technology\": \"" + technology + "\",\n" +
+                " \"status\": " + status + ",\n" +
+                " \"health\": " + health + ",\n" +
+                " \"usage\": " + usage + ",\n" +
+                " \"WiFi\": \"" + wifi + "\",\n" +
+                " \"Cellular\": \"" + cellular + "\",\n" +
+                " \"Bluetooth\": \"" + bluetooth + "\",\n" +
+                " \"RAM\": " + RAM + ",\n" +
+                " \"Brightness\": " + brightness + ",\n" +
+                " \"Timestamp\": " + timestamp + "},";
+    }
 }
 

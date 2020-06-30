@@ -8,10 +8,6 @@ import android.os.BatteryManager;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Observable;
-
-import android.os.Bundle;
-import android.provider.SyncStateContract;
 
 public class Battery_Receiver extends BroadcastReceiver {
 
@@ -33,8 +29,6 @@ public class Battery_Receiver extends BroadcastReceiver {
         int rawTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
         DateFormat df = new SimpleDateFormat("EEE, d MMM yyyy, HH:mm:ss");
         String date = df.format(Calendar.getInstance().getTime());
-        // Unregister a previously registered BroadcastReceiver.  All filters that have been registered for this BroadcastReceiver will be removed.
-        // context.unregisterReceiver(this);
 
         if (rawLevel >= 0 && scale > 0) {
             level = (rawLevel * 100) / scale;
@@ -65,15 +59,6 @@ public class Battery_Receiver extends BroadcastReceiver {
         currActivity.setBatteryStatus("Battery Status: " + getStatusString(status));
         currActivity.setBatteryHealth("Battery Health: " + getHealthString(health));
         currActivity.setUpdateTime("Last Updated: " + date);
-
-        /* Intent updateIntent = new Intent("UpdateValues");
-        updateIntent.putExtra("level", level);
-        updateIntent.putExtra("status", status);
-        updateIntent.putExtra("health", health);
-        updateIntent.putExtra("temperature", temperature);
-        updateIntent.putExtra("voltage", voltage);
-        updateIntent.putExtra("technology", technology);
-        context.sendBroadcast(updateIntent); */
 
     }
 
