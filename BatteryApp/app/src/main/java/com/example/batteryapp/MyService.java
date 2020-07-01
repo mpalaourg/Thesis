@@ -17,14 +17,13 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.provider.Settings;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -36,13 +35,15 @@ public class MyService extends Service {
     private CPU_Info myCPUInfo;
     private Battery_Receiver myBroadcast ;
     private IOHelper myIOHelper;
+    private PowerManager pm;
+    private PowerManager.WakeLock wl;
 
     private int level = 0, status, health, usage;
     private float temperature = 0.0f, voltage = 0.0f;
     private String technology;
     private boolean bluetooth, wifi, cellular;
     private double   RAM;
-    private int     brightness;
+    private int     brightness, sampleFreq;
     private long    timestamp;
 
     private final  int MB_CONVERSION = 1000 * 1000;
@@ -59,19 +60,16 @@ public class MyService extends Service {
     public void onCreate() {
         super.onCreate();
         currActivity = new MainActivity();
-        userID = currActivity.getUUID();
+
         timer = new Timer();
         myCPUInfo = new CPU_Info();
         myBroadcast  = new Battery_Receiver();
         myIOHelper = new IOHelper(this);;
+        pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BatteryApp:SamplingVariablesWakelock");
+        wl.acquire();
 
         // myIOHelper.deleteFile();
-        /* Create the file for the current use */
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
-        String todayDate = dateFormat.format(new Date());
-        FILE_NAME = userID + "-" + todayDate; //+ ".txt";
-
-        myIOHelper.saveFile(FILE_NAME, "");
         registerBatteryLevelReceiver();
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O)
@@ -90,6 +88,9 @@ public class MyService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
+        sampleFreq = intent.getExtras().getInt("SampleFreq");
+        userID     = intent.getExtras().getString("userID");
+        FILE_NAME  = intent.getExtras().getString("FILENAME");
 
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -132,14 +133,14 @@ public class MyService extends Service {
                         currActivity.setCPUbar(usage); // that can be outside the runnable
                     }
                 });
-                String temp = toJsonString(userID, level, temperature, voltage, technology, status, health, usage, bluetooth, wifi, cellular, RAM, brightness, timestamp);
+                String json = toJsonString(userID, level, temperature, voltage, technology, status, health, usage, bluetooth, wifi, cellular, RAM, brightness, sampleFreq, timestamp);
                 System.out.println(timestamp);
-                myIOHelper.saveFile(FILE_NAME, temp);
+                myIOHelper.saveFile(FILE_NAME, json);
 
             }
-        }, 0, 10000);
-        return START_NOT_STICKY;
-        //return START_STICKY;
+        }, 0, sampleFreq * 1000);
+        // return START_NOT_STICKY;
+        return START_STICKY;
     }
 
     /* In case the service is deleted or crashes some how
@@ -156,6 +157,7 @@ public class MyService extends Service {
     public void onDestroy() {
         System.out.println("Inside on Destroy of Service");
         unregisterBatteryLevelReceiver();
+        wakelockRelease();
         timerCancel();
         stopForeground(true);
         stopSelf();
@@ -166,6 +168,7 @@ public class MyService extends Service {
     public void onTaskRemoved(Intent rootIntent) {
         System.out.println("Inside on TaskRemoved of Service");
         unregisterBatteryLevelReceiver();
+        wakelockRelease();
         timerCancel();
         stopForeground(true);
         stopSelf();
@@ -251,6 +254,18 @@ public class MyService extends Service {
         }
         catch (Exception e){
             System.out.println("Timer already cancelled!");
+        }
+    }
+
+    /**
+     * Function to release (if necessary) the WakeLock.
+     */
+    private void wakelockRelease() {
+        try {
+            wl.release();
+        }
+        catch (Exception e){
+            System.out.println("WakeLock already released!");
         }
     }
 
@@ -353,7 +368,7 @@ public class MyService extends Service {
      * Get as input all the data and transform them to string ready to be save to json file.
      * @return (String) The json to be written.
      */
-    public String toJsonString(String userID, int level, float temperature, float voltage, String technology, int status, int health, int usage, boolean bluetooth, boolean wifi, boolean cellular, double RAM, int brightness, long timestamp){
+    public String toJsonString(String userID, int level, float temperature, float voltage, String technology, int status, int health, int usage, boolean bluetooth, boolean wifi, boolean cellular, double RAM, int brightness, int sampleFreq, long timestamp){
         return "{ \"ID\": \"" + userID + "\",\n" +
                 " \"level\": " + level + ",\n" +
                 " \"temperature\": " + temperature + ",\n" +
@@ -367,6 +382,7 @@ public class MyService extends Service {
                 " \"Bluetooth\": \"" + bluetooth + "\",\n" +
                 " \"RAM\": " + RAM + ",\n" +
                 " \"Brightness\": " + brightness + ",\n" +
+                " \"SampleFreq\": " + sampleFreq + ",\n" +
                 " \"Timestamp\": " + timestamp + "},";
     }
 }

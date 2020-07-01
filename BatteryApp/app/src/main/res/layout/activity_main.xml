@@ -184,10 +184,39 @@
                 android:text="@string/TextCpuUsage" />
 
             <TextView
-                android:id="@+id/textView"
+                android:id="@+id/textSampleFreq"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="TextView" />
+                android:layout_marginTop="15dp"
+                android:gravity="center"
+                android:text="@string/textSampleFreq"
+                android:textStyle="bold|italic" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                >
+
+                <EditText
+                    android:id="@+id/editTextNumber"
+                    android:layout_width="307dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="15dp"
+                    android:ems="10"
+                    android:gravity="center"
+                    android:hint="@string/hintEditText"
+                    android:importantForAutofill="no"
+                    android:inputType="number" />
+
+                <Button
+                    android:id="@+id/btnSubmit"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/TextButtonSubmit" />
+
+            </LinearLayout>
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/btnUpload"

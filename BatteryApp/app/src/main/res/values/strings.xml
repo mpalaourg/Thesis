@@ -15,5 +15,7 @@
     <string name="TextRAM">RAM Usage: N/A</string>
     <string name="TextBrightness">Current Brightness: N/A</string>
     <string name="TextCpuUsage">CPU Usage Estimation: N/A</string>
-    <string name="ButtonReadFreq">Read Freq</string>
+    <string name="textSampleFreq">Pick a Sampling Frequency between 5 and 10 seconds.</string>
+    <string name="hintEditText">Default is 10 seconds.</string>
+    <string name="TextButtonSubmit">submit</string>
 </resources>

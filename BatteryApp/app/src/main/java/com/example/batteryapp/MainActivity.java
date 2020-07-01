@@ -1,7 +1,5 @@
 package com.example.batteryapp;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
@@ -9,17 +7,22 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Scanner;
 import java.util.UUID;
 
@@ -28,15 +31,18 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import okio.Buffer;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static TextView textSOC, textTemperature, textVoltage, textTechnology, textStatus, textHealth, textTime, textCpuUsage;
     private static FloatingActionButton btnUpload;
     private static ProgressBar barCPU;
-    private static TextView textWifi, textData, textBluetooth, textBrightness, textRAM, mEditText, textUUID;
+    private static TextView textWifi, textData, textBluetooth, textBrightness, textRAM, textUUID;
+    private static EditText textSampleFreq;
+    private static Button btnSubmit;
 
-    private static String userID;
+    private static String userID, FILE_NAME;
+
+    private int sampleFreq;
     private IOHelper myIOHelper;
     public static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
@@ -50,8 +56,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         System.out.println("Inside Create");
         setContentView(R.layout.activity_main);
         initializeComponents();
-
         myIOHelper = new IOHelper(this);
+        myIOHelper.deleteFile(); // Delete for now the files being saved.
 
         /* Create a unique id per user, only for the 1st time */
         File f = new File(getFilesDir() + "/UUID.txt");
@@ -60,7 +66,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             userID = UUID.randomUUID().toString();
             userID = userID.replace("-", "");
             setTextUUID("Your Unique userID is: " + userID);
-            myIOHelper.saveFile(userID, "UUID.txt");
+            myIOHelper.saveFile("UUID.txt", userID);
         } else {
             try {
                 Scanner myReader = new Scanner(f);
@@ -74,14 +80,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             setTextUUID("Your Unique userID is: " + userID);
         }
 
+        /* Create the file for the current use */
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+        String todayDate = dateFormat.format(new Date());
+        FILE_NAME = userID + "-" + todayDate; //+ ".txt";
+        myIOHelper.saveFile(FILE_NAME, "");
+
+        /* By default sampling frequency is 10 seconds */
+        sampleFreq = 10;
+
         myService = new MyService();
         myServiceIntent = new Intent(this, myService.getClass());
+        /* Pass the arguments to the service */
+        myServiceIntent.putExtra("SampleFreq", sampleFreq);
+        myServiceIntent.putExtra("FILENAME", FILE_NAME);
+        myServiceIntent.putExtra("userID", userID);
         if (!isMyServiceRunning(myService.getClass())) {
             startService(myServiceIntent);
         }
 
-        // File upload
+        /* File upload */
         btnUpload.setOnClickListener(this);
+        /* Change Sampling Frequency */
+        btnSubmit.setOnClickListener(this);
 
     }
 
@@ -102,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (v == btnUpload) {
             String[] files = fileList();
             for (String FILE_NAME : files) {
+                System.out.println("Outside if: " + FILE_NAME);
                 if (!FILE_NAME.contains("UUID")) {
                     System.out.println(FILE_NAME);
                     String json = myIOHelper.loadFile(FILE_NAME);
@@ -109,6 +131,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     OkHttpAsync okHttpAsync = new OkHttpAsync();
                     okHttpAsync.execute("http://192.168.100.4:5000/postjson", json, FILE_NAME);
 
+                }
+            }
+        } else if (v == btnSubmit){
+            String userInput = textSampleFreq.getText().toString();
+            int tempInput = (int) Double.parseDouble(userInput);
+            if (tempInput < 5){
+                textSampleFreq.setError("Sampling frequency must be equal or greater than 5.");
+            } else if (tempInput > 10){
+                textSampleFreq.setError("Sampling frequency must be equal or less than 10.");
+            } else {
+                sampleFreq = tempInput;
+                InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+                textSampleFreq.setText("");
+                textSampleFreq.clearFocus();
+                Toast.makeText(this, "Your current Sampling Frequency is: " + sampleFreq + " seconds.", Toast.LENGTH_LONG).show();
+                /* Stop the previous service and start a new one */
+                stopService(myServiceIntent);
+                myServiceIntent = new Intent(this, myService.getClass());
+                myServiceIntent.putExtra("SampleFreq", sampleFreq);
+                myServiceIntent.putExtra("FILENAME", FILE_NAME);
+                myServiceIntent.putExtra("userID", userID);
+                if (!isMyServiceRunning(myService.getClass())) {
+                    startService(myServiceIntent);
                 }
             }
         }
@@ -166,13 +212,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         textCpuUsage = (TextView) findViewById(R.id.cpuUsage);
         barCPU = (ProgressBar) findViewById(R.id.barCPU);
         btnUpload = (FloatingActionButton) findViewById(R.id.btnUpload);
-        mEditText = (TextView) findViewById(R.id.textView);
         textUUID = (TextView) findViewById(R.id.UserID);
 
-    }
+        textSampleFreq = (EditText) findViewById(R.id.editTextNumber);
+        btnSubmit      = (Button) findViewById(R.id.btnSubmit);
 
-    public String getUUID() {
-        return userID;
     }
 
     /* Set text of the Text Views */
@@ -269,14 +313,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     /* Delete the file until now. If the app don't close immediately, the remaining json files will be written the next time */
                     deleteFile(params[2]);
                     return "File Upload Successfully";
-                } else {
+                } else if (postCode == 400){
+                    return "Bad request. Please send only json files.";
+                }
+                else {
                     return "Something went wrong. Try again later.";
                 }
             } catch (IOException e) {
                 System.out.println(e.toString());
                 String exceptionName = e.getClass().getCanonicalName();
                 return exceptionName + ". Try again later.";
-                // return e.toString();
             }
         }
 
@@ -286,21 +332,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
         }
 
-        /* post request code here
-        int doPostRequest(String url, String json, String filename) throws IOException {
-            RequestBody body = RequestBody.create(JSON, json);
-            Request request = new Request.Builder()
-                    .header("name", filename)
-                    .url(url)
-                    .post(body)
-                    .build();
-            /* Debug Purposes for the response
-            final Buffer buffer = new Buffer();
-            body.writeTo(buffer);
-            System.out.println(buffer.readUtf8());
-        Response response = myClient.newCall(request).execute();
-        // response.body().close();
-            return response.code();
-    }*/
     }
 }

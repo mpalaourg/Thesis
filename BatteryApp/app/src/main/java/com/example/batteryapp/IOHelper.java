@@ -38,7 +38,7 @@ public class IOHelper {
         }
     }
 
-    /* Read the files from internal storage and then delete them!*/
+    /* Read the file from the internal storage and return its content. */
     public String loadFile(String FILE_NAME) {
         FileInputStream fis = null;
         String body = "";
