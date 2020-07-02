@@ -22,54 +22,51 @@ import android.provider.Settings;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import java.text.DecimalFormat;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class MyService extends Service {
-    private MainActivity currActivity;
     private String userID, FILE_NAME;
 
     private Timer timer;
     private CPU_Info myCPUInfo;
     private Battery_Receiver myBroadcast ;
     private IOHelper myIOHelper;
-    private PowerManager pm;
+    private LocalBroadcastManager broadcaster;
     private PowerManager.WakeLock wl;
+    private PowerManager pm;
 
-    private int level = 0, status, health, usage;
+    private int level = 0, status, health;
     private float temperature = 0.0f, voltage = 0.0f;
-    private String technology;
-    private boolean bluetooth, wifi, cellular;
-    private double   RAM;
-    private int     brightness, sampleFreq;
+    private String technology, brandModel, packageName;
+    private boolean bluetooth, wifi, cellular, batteryOptimization;
+    private double  RAM;
+    private int     usage, brightness, sampleFreq;
     private long    timestamp;
 
-    private final  int MB_CONVERSION = 1000 * 1000;
-    private static boolean wifiConnected = false;   // Whether there is a Wi-Fi connection.
-    private static boolean mobileConnected = false; // Whether there is a mobile connection.
-    private static DecimalFormat df = new DecimalFormat("0.00");
-
-
-    /** Function which is called at the creation of the Service. For androids version after O
-     *  will a create a foreground service with a notification, where the proper notification channel
-     *  is initialized. Otherwise, the service has a simple notification.
+    /** Function which is called at the creation of the Service. First, initialize class variables.
+     * Then a partial WakeLock will be acquired, to prevent the DOZE Mode to effect the sampling of
+     * the Service. A receiver will be register to wait for "ACTION_BATTERY_CHANGED" intents. Finally,
+     * for androids version after O will a create a foreground service with a notification, where the
+     * proper notification channel is initialized. Otherwise, the service has a simple notification.
      */
     @Override
     public void onCreate() {
         super.onCreate();
-        currActivity = new MainActivity();
-
+        packageName = getPackageName();
         timer = new Timer();
         myCPUInfo = new CPU_Info();
         myBroadcast  = new Battery_Receiver();
-        myIOHelper = new IOHelper(this);;
+        myIOHelper = new IOHelper(this);
+        broadcaster = LocalBroadcastManager.getInstance(this);
         pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        /* Ref Link: https://stackoverflow.com/a/29006964 && https://www.androiddesignpatterns.com/2013/08/binders-death-recipients.html
+         If process will be killed, the WakeLock will be released */
         wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BatteryApp:SamplingVariablesWakelock");
         wl.acquire();
 
-        // myIOHelper.deleteFile();
         registerBatteryLevelReceiver();
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O)
@@ -79,22 +76,31 @@ public class MyService extends Service {
     }
 
     /**
+     * This method will be called on the start of the service. First, the variables known to be const
+     * while the service is running will be initialized. Then, a TimerTask will be scheduled to run
+     * periodically every 'sampleFreq' seconds. At each run, the battery stats will be sampled from
+     * the BroadcastReceiver*, the connectivity stats will be sampled from the System and the same for
+     * the current brightness and RAM Available. Finally, at the end of the runs 'UpdateIntent' intents
+     * will be sent to the UI Thread and append the new json formatted sample to the file of the current session.
+     * *updated at each 'ACTION_BATTERY_CHANGED' intent
      *
      * @param intent  -> The Intent supplied to Context.startService(Intent), as given.
      * @param flags   -> Additional data about this start request. Value is either 0 or a combination of START_FLAG_REDELIVERY, and START_FLAG_RETRY
      * @param startId -> A unique integer representing this specific request to start.
-     * @return
+     * @return The return value indicates what semantics the system should use for the service's current started state.
      */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
-        sampleFreq = intent.getExtras().getInt("SampleFreq");
-        userID     = intent.getExtras().getString("userID");
-        FILE_NAME  = intent.getExtras().getString("FILENAME");
+        brandModel = Build.BRAND + "-" + Build.MODEL;
+        sampleFreq = intent.getIntExtra("SampleFreq", 10);
+        userID     = intent.getStringExtra("userID");
+        FILE_NAME  = intent.getStringExtra("FILENAME");
 
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
+                batteryOptimization = !pm.isIgnoringBatteryOptimizations(packageName);
                 timestamp = System.currentTimeMillis();
                 usage = getCPUUsage();
                 level = myBroadcast.getLevel();
@@ -110,30 +116,18 @@ public class MyService extends Service {
                 RAM = Math.round( getAvailableRAM() * 100.0) / 100.0;
                 brightness = getBrightness();
 
-                currActivity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (wifi){
-                            currActivity.setWiFiConnectivity("WiFI Enable", Color.GREEN);
-                            currActivity.setCellularConnectivity("Data Disable", Color.BLACK);
-                        }else if (cellular){
-                            currActivity.setWiFiConnectivity("WiFI Disable", Color.BLACK);
-                            currActivity.setCellularConnectivity("Data Enable", Color.GREEN);
-                        } else {
-                            currActivity.setWiFiConnectivity("WiFI Disable", Color.BLACK);
-                            currActivity.setCellularConnectivity("Data Disable", Color.BLACK);
-                        }
-                        if (bluetooth){
-                            currActivity.setBluetoothConnectivity("Bluetooth Enable", Color.GREEN);
-                        } else {
-                            currActivity.setBluetoothConnectivity("Bluetooth Disable", Color.BLACK);
-                        }
-                        currActivity.setAvailableRam("Available RAM: " + df.format(RAM) + "%");
-                        currActivity.setBrightness("Current Brightness: " + brightness);
-                        currActivity.setCPUbar(usage); // that can be outside the runnable
-                    }
-                });
-                String json = toJsonString(userID, level, temperature, voltage, technology, status, health, usage, bluetooth, wifi, cellular, RAM, brightness, sampleFreq, timestamp);
+                /* Send the intent to update the UI */
+                Intent updateIntent = new Intent("UpdateIntent");
+                updateIntent.putExtra("WiFiConnectivity", wifi);
+                updateIntent.putExtra("CellularConnectivity", cellular);
+                updateIntent.putExtra("BluetoothConnectivity", bluetooth);
+                updateIntent.putExtra("AvailableRAM", RAM);
+                updateIntent.putExtra("Brightness", brightness);
+                updateIntent.putExtra("CPU", usage);
+                broadcaster.sendBroadcast(updateIntent);
+
+                String json = toJsonString(userID, level, temperature, voltage, technology, status, health, usage, bluetooth, wifi, cellular,
+                                            RAM, brightness, sampleFreq, brandModel, batteryOptimization, timestamp);
                 System.out.println(timestamp);
                 myIOHelper.saveFile(FILE_NAME, json);
 
@@ -143,15 +137,16 @@ public class MyService extends Service {
         return START_STICKY;
     }
 
-    /* In case the service is deleted or crashes some how
-    @Override
-    public void onDestroy() {
-        isServiceRunning = false;
-        super.onDestroy();
-    }*/
-
-    /** Function which is called before the Service exit and close. Clean up business must be
-     * done here
+    /** Function which is called before the Service exit and close. Clean up business must be done here.
+     *      The Battery BroadcastReceiver must be unregistered.
+     *      The WakeLock must be released.
+     *      The timer must be cancelled.
+     *  Then, the service will be removed from the foreground state [ stopForeground(true) ] and
+     *  finally stop running [ stopSelf() ].
+     *
+     *  When the onDestroy won't be called (i.e Force Stop, the system needs RAM), the process is
+     *  gone and so there is no receiver to unregister, timer to be cancelled and wakeLock to be
+     *  released. All of that will be gone and Android will take care of them.
      */
     @Override
     public void onDestroy() {
@@ -164,6 +159,17 @@ public class MyService extends Service {
         super.onDestroy();
     }
 
+    /**
+     * This method will be called when the app will be swiped from the recent apps. The same applies
+     * as onDestroy method.
+     *
+     * If onDestroy was called before the method does nothing.
+     *  - stopSelf() = Stop the service, if it was previously started.
+     *  - stopForeground() tries to close the service. If already done, its ok.
+     *  - Stacking calls on timer.cancel() have no effect.
+     *
+     * @param rootIntent -> The original root Intent that was used to launch the task that is being removed.
+     */
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         System.out.println("Inside on TaskRemoved of Service");
@@ -176,9 +182,9 @@ public class MyService extends Service {
     }
 
     /** Function to used if clients want to bind the service.
-     * Return the communication channel to the service.
+     *
      * @param intent -> The Intent that was used to bind to this service.
-     * @return null (no binding needed)
+     * @return Return the communication channel to the service. Here, null (no binding needed)
      */
     @Override
     public IBinder onBind(Intent intent) {
@@ -227,7 +233,6 @@ public class MyService extends Service {
      * Function to register the Battery BroadcastReceiver with intent filter.
      */
     private void registerBatteryLevelReceiver() {
-        // To know which intent to catch. 'ACTION_BATTERY_CHANGED'
         IntentFilter batteryLevelFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         registerReceiver(myBroadcast, batteryLevelFilter);
     }
@@ -274,8 +279,7 @@ public class MyService extends Service {
      * @return (int) CPU Usage estimation
      */
     public int getCPUUsage() {
-        int cpuUse = (int) myCPUInfo.readCpuPercentNow();
-        return cpuUse;
+        return (int) myCPUInfo.readCpuPercentNow();
     }
 
     /**
@@ -286,6 +290,8 @@ public class MyService extends Service {
         ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeInfo = connMgr.getActiveNetworkInfo();
 
+        // Whether there is a Wi-Fi connection.
+        boolean wifiConnected;
         if (activeInfo != null && activeInfo.isConnected()) {
             wifiConnected = activeInfo.getType() == ConnectivityManager.TYPE_WIFI;
         } else {
@@ -303,6 +309,8 @@ public class MyService extends Service {
         ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeInfo = connMgr.getActiveNetworkInfo();
 
+        // Whether there is a mobile connection.
+        boolean mobileConnected;
         if (activeInfo != null && activeInfo.isConnected()) {
             mobileConnected = activeInfo.getType() == ConnectivityManager.TYPE_MOBILE;
         } else {
@@ -321,11 +329,7 @@ public class MyService extends Service {
 
         if (mBluetoothAdapter == null) {
             return false;
-        } else if (mBluetoothAdapter.isEnabled()){
-            return true;
-        } else {
-            return false;
-        }
+        } else return mBluetoothAdapter.isEnabled();
     }
 
     /**
@@ -343,12 +347,12 @@ public class MyService extends Service {
         ActivityManager.MemoryInfo myMemoryInfo = new ActivityManager.MemoryInfo();
         ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         activityManager.getMemoryInfo(myMemoryInfo);
+        int MB_CONVERSION = 1000 * 1000;
         double availMemMB = (double) myMemoryInfo.availMem / MB_CONVERSION;
-        //Percentage can be calculated for API 16+ ~ TotalMem return bytes, convert to MBytes.
+        // Percentage can be calculated for API 16+ ~ TotalMem return bytes, convert to MBytes.
         double totalMemMB = (double) myMemoryInfo.totalMem / MB_CONVERSION;
-        double percentAvail = availMemMB / totalMemMB  * 100.0;
 
-        return percentAvail;
+        return availMemMB / totalMemMB  * 100.0;
     }
 
     /**
@@ -356,19 +360,19 @@ public class MyService extends Service {
      * @return (int) The current brightness of the Screen.
      */
     public int getBrightness() {
-        int brightness = Settings.System.getInt(
+        return Settings.System.getInt(
                 getContentResolver(),
                 Settings.System.SCREEN_BRIGHTNESS,
                 0
         );
-        return brightness;
     }
 
     /**
      * Get as input all the data and transform them to string ready to be save to json file.
      * @return (String) The json to be written.
      */
-    public String toJsonString(String userID, int level, float temperature, float voltage, String technology, int status, int health, int usage, boolean bluetooth, boolean wifi, boolean cellular, double RAM, int brightness, int sampleFreq, long timestamp){
+    public String toJsonString(String userID, int level, float temperature, float voltage, String technology, int status, int health, int usage,
+                               boolean bluetooth, boolean wifi, boolean cellular, double RAM, int brightness, int sampleFreq, String brandModel, boolean batteryOptimization, long timestamp){
         return "{ \"ID\": \"" + userID + "\",\n" +
                 " \"level\": " + level + ",\n" +
                 " \"temperature\": " + temperature + ",\n" +
@@ -383,6 +387,8 @@ public class MyService extends Service {
                 " \"RAM\": " + RAM + ",\n" +
                 " \"Brightness\": " + brightness + ",\n" +
                 " \"SampleFreq\": " + sampleFreq + ",\n" +
+                " \"brandModel\": \"" + brandModel + "\",\n" +
+                " \"batteryOptimization\": \"" + batteryOptimization + "\",\n" +
                 " \"Timestamp\": " + timestamp + "},";
     }
 }

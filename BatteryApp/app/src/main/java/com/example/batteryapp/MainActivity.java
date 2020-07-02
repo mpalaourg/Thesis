@@ -1,10 +1,18 @@
 package com.example.batteryapp;
 
 import android.app.ActivityManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -15,14 +23,18 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.Scanner;
 import java.util.UUID;
 
@@ -33,14 +45,15 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-    private static TextView textSOC, textTemperature, textVoltage, textTechnology, textStatus, textHealth, textTime, textCpuUsage;
-    private static FloatingActionButton btnUpload;
-    private static ProgressBar barCPU;
-    private static TextView textWifi, textData, textBluetooth, textBrightness, textRAM, textUUID;
-    private static EditText textSampleFreq;
-    private static Button btnSubmit;
+    private static TextView textSOC, textTemperature, textVoltage, textTechnology, textStatus, textHealth, textTime;
+    private FloatingActionButton btnUpload;
+    private ProgressBar barCPU;
+    private TextView textWifi, textData, textBluetooth, textBrightness, textRAM, textUUID, textCpuUsage;
+    private EditText textSampleFreq;
+    private Button btnSubmit;
 
     private static String userID, FILE_NAME;
+    private static DecimalFormat df = new DecimalFormat("0.00");
 
     private int sampleFreq;
     private IOHelper myIOHelper;
@@ -48,16 +61,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     Intent myServiceIntent;
     private MyService myService;
+    private BroadcastReceiver receiver;
 
     /* Called when the activity is first created. */
+
+    /**
+     * This method will be called on the creation of the activity. First, the UI components will be
+     * initialized. Only for the installation, a unique user ID (and file) will be created. Then, a
+     * file associated with the current session will be created (based on UUID and the current time).
+     * Finally, a service will be started with a default Sampling Frequency of 10 seconds and the
+     * listeners for the buttons will be set
+     * @param savedInstanceState ->  If the activity is being re-initialized after previously being shut down then this Bundle contains the data
+     *                               it most recently supplied in onSaveInstanceState(Bundle). Otherwise it is null.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         System.out.println("Inside Create");
         setContentView(R.layout.activity_main);
-        initializeComponents();
         myIOHelper = new IOHelper(this);
-        myIOHelper.deleteFile(); // Delete for now the files being saved.
+        initializeComponents();
+        //myIOHelper.deleteFile(); // Delete for now the files being saved.
 
         /* Create a unique id per user, only for the 1st time */
         File f = new File(getFilesDir() + "/UUID.txt");
@@ -81,9 +105,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         /* Create the file for the current use */
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault());
         String todayDate = dateFormat.format(new Date());
-        FILE_NAME = userID + "-" + todayDate; //+ ".txt";
+        FILE_NAME = userID + "-" + todayDate;
         myIOHelper.saveFile(FILE_NAME, "");
 
         /* By default sampling frequency is 10 seconds */
@@ -104,8 +128,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         /* Change Sampling Frequency */
         btnSubmit.setOnClickListener(this);
 
+        /* Not necessary i have the Wake Locks
+        Intent intent = new Intent();
+        String packageName = getPackageName();
+        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+            intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            intent.setData(Uri.parse("package:" + packageName));
+            startActivity(intent);
+        }*/
     }
 
+    /**
+     * Check if a service is already running or a new one must be initialized.
+     * @param serviceClass The class of the service to be checked.
+     * @return true if a service is already running (boolean)
+     */
     private boolean isMyServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
@@ -118,52 +156,115 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return false;
     }
 
+    /**
+     * The methods to be called on the buttons clicks.
+     *  btnUpload: First will check if a Wifi Connection is enable. If WiFi connection is established
+     *             then an AsyncTask will be created (for each file) to upload to the url, the json
+     *             content provided, with the proper FILE_NAME.
+     *  btnSubmit: The user wants to change the sampling frequency. First, the input will be checked
+     *             to be between the proper boundaries. If true, the previous service will be cleared
+     *             and a new one will be schedule to sample with the new Sampling Frequency. Finally,
+     *             the keyboard will be closed and the ediText will be cleared and ready for the next
+     *             user input.
+     * @param v -> View: The view (Button) that was clicked.
+     */
     @Override
     public void onClick(View v) {
         if (v == btnUpload) {
-            String[] files = fileList();
-            for (String FILE_NAME : files) {
-                System.out.println("Outside if: " + FILE_NAME);
-                if (!FILE_NAME.contains("UUID")) {
-                    System.out.println(FILE_NAME);
-                    String json = myIOHelper.loadFile(FILE_NAME);
+            boolean wifiConnected = false;
+            ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeInfo = connMgr.getActiveNetworkInfo();
+            if (activeInfo != null && activeInfo.isConnected()) { wifiConnected = activeInfo.getType() == ConnectivityManager.TYPE_WIFI; }
 
-                    OkHttpAsync okHttpAsync = new OkHttpAsync();
-                    okHttpAsync.execute("http://192.168.100.4:5000/postjson", json, FILE_NAME);
+            if (wifiConnected) {
+                String[] files = fileList();
+                for (String FILE_NAME : files) {
+                    System.out.println("Outside if: " + FILE_NAME);
+                    if (!FILE_NAME.contains("UUID")) {
+                        System.out.println(FILE_NAME);
+                        String json = myIOHelper.loadFile(FILE_NAME);
 
+                        OkHttpAsync okHttpAsync = new OkHttpAsync( this );
+                        okHttpAsync.execute("http://192.168.100.4:5000/postjson", json, FILE_NAME);
+
+                    }
                 }
+            } else {
+                Toast.makeText(this, "WiFi is Disabled. Upload only via WiFi.", Toast.LENGTH_LONG).show();
             }
         } else if (v == btnSubmit){
             String userInput = textSampleFreq.getText().toString();
-            int tempInput = (int) Double.parseDouble(userInput);
-            if (tempInput < 5){
-                textSampleFreq.setError("Sampling frequency must be equal or greater than 5.");
-            } else if (tempInput > 10){
-                textSampleFreq.setError("Sampling frequency must be equal or less than 10.");
-            } else {
-                sampleFreq = tempInput;
-                InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
-                textSampleFreq.setText("");
-                textSampleFreq.clearFocus();
-                Toast.makeText(this, "Your current Sampling Frequency is: " + sampleFreq + " seconds.", Toast.LENGTH_LONG).show();
-                /* Stop the previous service and start a new one */
-                stopService(myServiceIntent);
-                myServiceIntent = new Intent(this, myService.getClass());
-                myServiceIntent.putExtra("SampleFreq", sampleFreq);
-                myServiceIntent.putExtra("FILENAME", FILE_NAME);
-                myServiceIntent.putExtra("userID", userID);
-                if (!isMyServiceRunning(myService.getClass())) {
-                    startService(myServiceIntent);
+            if (!userInput.equals("")) {
+                int tempInput = (int) Double.parseDouble(userInput);
+                if (tempInput < 5) {
+                    textSampleFreq.setError("Sampling frequency must be equal or greater than 5.");
+                } else if (tempInput > 10) {
+                    textSampleFreq.setError("Sampling frequency must be equal or less than 10.");
+                } else {
+                    sampleFreq = tempInput;
+                    Toast.makeText(this, "Your current Sampling Frequency is: " + sampleFreq + " seconds.", Toast.LENGTH_LONG).show();
+                    /* Stop the previous service and start a new one */
+                    stopService(myServiceIntent);
+                    myServiceIntent = new Intent(this, myService.getClass());
+                    myServiceIntent.putExtra("SampleFreq", sampleFreq);
+                    myServiceIntent.putExtra("FILENAME", FILE_NAME);
+                    myServiceIntent.putExtra("userID", userID);
+                    if (!isMyServiceRunning(myService.getClass())) {
+                        startService(myServiceIntent);
+                    }
                 }
             }
+            InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            View view = getCurrentFocus();
+            if (view != null) { inputManager.hideSoftInputFromWindow(view.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS); }
+            textSampleFreq.setText("");
+            textSampleFreq.clearFocus();
         }
     }
 
+    /**
+     * The method will be called on the start of the activity. A receiver will be created, for
+     * updating the UI Thread, when a new sample will be collected by the Service. Finally, register
+     * the receiver to wait for a "UpdateIntent" intent.
+     */
     @Override
     protected void onStart() {
         super.onStart();
         System.out.println("Inside onStart");
+        receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                boolean wifi = intent.getBooleanExtra("WiFiConnectivity", false);
+                boolean cellular = intent.getBooleanExtra("CellularConnectivity", false);
+                boolean bluetooth = intent.getBooleanExtra("BluetoothConnectivity", false);
+                double RAM = intent.getDoubleExtra("AvailableRAM", 0);
+                int brightness = intent.getIntExtra("Brightness", 0);
+                int usage = intent.getIntExtra("CPU", 0);
+
+                if (wifi){
+                    setWiFiConnectivity("WiFI Enable", Color.GREEN);
+                    setCellularConnectivity("Data Disable", Color.BLACK);
+                }else if (cellular){
+                    setWiFiConnectivity("WiFI Disable", Color.BLACK);
+                    setCellularConnectivity("Data Enable", Color.GREEN);
+                } else {
+                    setWiFiConnectivity("WiFI Disable", Color.BLACK);
+                    setCellularConnectivity("Data Disable", Color.BLACK);
+                }
+                if (bluetooth){
+                    setBluetoothConnectivity("Bluetooth Enable", Color.GREEN);
+                } else {
+                    setBluetoothConnectivity("Bluetooth Disable", Color.BLACK);
+                }
+                setCPUbar(usage);
+                setTextCPU("CPU Usage Estimation: " + usage + "%");
+                setAvailableRam("Available RAM: " + df.format(RAM) + "%");
+                setBrightness("Current Brightness: " + brightness);
+            }
+        };
+        LocalBroadcastManager.getInstance(this).registerReceiver((receiver),
+                new IntentFilter("UpdateIntent")
+        );
     }
 
     @Override
@@ -178,119 +279,130 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         System.out.println("Inside Pause");
     }
 
+    /**
+     * The method will be called when the user exit or minimize the activity. The UI thread doesn't
+     * need to be updated during this time, so the receiver will be unregistered from the "UpdateIntent"
+     * intent.
+     */
     @Override
     protected void onStop() {
         super.onStop();
         System.out.println("Inside Stop");
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver);
     }
 
+    /**
+     * This method will be called when the user exit the activity (press the back button). The service
+     * is no longer needed it, so it will be stopped with stopService().
+     */
     @Override
     protected void onDestroy() {
         super.onDestroy();
         System.out.println("Inside Destroy of Activity. Calling StopService ...");
-
+        // Cancel the Async Task here? //
         stopService(myServiceIntent);
         // myService.onDestroy();
     }
 
-    /* Buttons, TextViews, ProgressBars are initialized here */
+    /**
+     * All the views (Buttons, TextViews, ProgressBar etc) of the activity will be initialized here.
+     */
     private void initializeComponents() {
-        textSOC = (TextView) findViewById(R.id.batteryLevel);
-        textTemperature = (TextView) findViewById(R.id.batteryTemperature);
-        textVoltage = (TextView) findViewById(R.id.batteryVoltage);
-        textTechnology = (TextView) findViewById(R.id.batteryTechnology);
-        textStatus = (TextView) findViewById(R.id.batteryStatus);
-        textHealth = (TextView) findViewById(R.id.batteryHealth);
-        textTime = (TextView) findViewById(R.id.updateTime);
+        textSOC         = findViewById(R.id.batteryLevel);
+        textTemperature = findViewById(R.id.batteryTemperature);
+        textVoltage     = findViewById(R.id.batteryVoltage);
+        textTechnology  = findViewById(R.id.batteryTechnology);
+        textStatus      = findViewById(R.id.batteryStatus);
+        textHealth      = findViewById(R.id.batteryHealth);
+        textTime        = findViewById(R.id.updateTime);
 
-        textWifi = (TextView) findViewById(R.id.wifiStatus);
-        textData = (TextView) findViewById(R.id.dataStatus);
-        textBluetooth = (TextView) findViewById(R.id.bluetoothStatus);
+        textWifi       = findViewById(R.id.wifiStatus);
+        textData       = findViewById(R.id.dataStatus);
+        textBluetooth  = findViewById(R.id.bluetoothStatus);
+        textRAM        = findViewById(R.id.ramUsage);
+        textBrightness = findViewById(R.id.textBright);
+        textCpuUsage   = findViewById(R.id.cpuUsage);
+        barCPU         = findViewById(R.id.barCPU);
 
-        textRAM = (TextView) findViewById(R.id.ramUsage);
-        textBrightness = (TextView) findViewById(R.id.textBright);
-        textCpuUsage = (TextView) findViewById(R.id.cpuUsage);
-        barCPU = (ProgressBar) findViewById(R.id.barCPU);
-        btnUpload = (FloatingActionButton) findViewById(R.id.btnUpload);
-        textUUID = (TextView) findViewById(R.id.UserID);
+        btnUpload = findViewById(R.id.btnUpload);
+        textUUID  = findViewById(R.id.UserID);
 
-        textSampleFreq = (EditText) findViewById(R.id.editTextNumber);
-        btnSubmit      = (Button) findViewById(R.id.btnSubmit);
+        textSampleFreq = findViewById(R.id.editTextNumber);
+        btnSubmit      = findViewById(R.id.btnSubmit);
 
     }
 
-    /* Set text of the Text Views */
+    /**
+     * All the methods to set the text displayed from a TextView and the other views of the activity.
+     */
     public void setBatteryLevel(String text) {
         textSOC.setText(text);
     }
-
     public void setBatteryTemp(String text) {
         textTemperature.setText(text);
     }
-
     public void setBatteryVolt(String text) {
         textVoltage.setText(text);
     }
-
     public void setBatteryTech(String text) {
         textTechnology.setText(text);
     }
-
     public void setBatteryStatus(String text) {
         textStatus.setText(text);
     }
-
     public void setBatteryHealth(String text) {
         textHealth.setText(text);
     }
-
     public void setUpdateTime(String text) {
         textTime.setText(text);
     }
-
     public void setAvailableRam(String text) {
         textRAM.setText(text);
     }
-
     public void setBrightness(String text) {
         textBrightness.setText(text);
     }
-
     public void setBluetoothConnectivity(String text, int color) {
         textBluetooth.setText(text);
         textBluetooth.setTextColor(color);
     }
-
     public void setWiFiConnectivity(String text, int color) {
         textWifi.setText(text);
         textWifi.setTextColor(color);
     }
-
     public void setCellularConnectivity(String text, int color) {
         textData.setText(text);
         textData.setTextColor(color);
     }
-
     public void setCPUbar(int usage) {
         barCPU.setProgress(usage);
-        setCPUUsage(usage);
     }
-
-    public void setCPUUsage(int usage) {
-        textCpuUsage.setText("CPU Usage Estimation: " + usage + "%");
+    public void setTextCPU(String text) {
+        textCpuUsage.setText(text);
     }
-
     public void setTextUUID(String text) {
         textUUID.setText(text);
     }
 
-    public class OkHttpAsync extends AsyncTask<String, Void, String> {
+    /**
+     * The class responsible to upload the json to the server. A WeakReference will be used to the
+     * Main activity, to be safe of Memory leaks.
+     */
+    private static class OkHttpAsync extends AsyncTask<String, Void, String> {
 
-        private OkHttpClient myClient;
+        private WeakReference<MainActivity> activityReference;
+        OkHttpAsync(MainActivity context) { activityReference = new WeakReference<>(context); }
 
+        /**
+         * The method will be called when a OkHttpAsync will be executed. At a response code of 200
+         * the file being uploaded will be deleted to save some memory.
+         * @param params -> A list of string parameters to be used inside the method (url | json | FILE_NAME)
+         * @return A string holding the server response
+         */
         @Override
         protected String doInBackground(String... params) {
-            myClient = new OkHttpClient();
+            OkHttpClient myClient = new OkHttpClient();
+            MainActivity activity = activityReference.get();
             int postCode;
             try {
                 RequestBody body = RequestBody.create(JSON, params[1]);
@@ -299,19 +411,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         .url(params[0])
                         .post(body)
                         .build();
-                /* Debug Purposes for the response
-                final Buffer buffer = new Buffer();
-                body.writeTo(buffer);
-                System.out.println(buffer.readUtf8()); */
                 Response response = myClient.newCall(request).execute();
                 postCode = response.code();
                 /* Without it, i get a warning: W/System.out: A resource failed to call response.body().close(). */
-                response.body().close();
+                if (response.body() != null) { response.body().close(); }
 
-                //System.out.println(postCode);
+                // System.out.println(postCode);
                 if (postCode == 200) {
                     /* Delete the file until now. If the app don't close immediately, the remaining json files will be written the next time */
-                    deleteFile(params[2]);
+                    activity.deleteFile(params[2]);
                     return "File Upload Successfully";
                 } else if (postCode == 400){
                     return "Bad request. Please send only json files.";
@@ -326,11 +434,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
 
+        /**
+         * This method will be called after the execution of the "background" OkHttpAsync task.
+         * The result will be handled here and a Toast Message will be prompted to the user
+         * @param message -> A string holding the server response
+         */
         @Override
         protected void onPostExecute(String message) {
-            /* Handle result here */
-            Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
+            MainActivity activity = activityReference.get();
+            Toast.makeText(activity.getApplicationContext(), message, Toast.LENGTH_LONG).show();
         }
-
     }
 }

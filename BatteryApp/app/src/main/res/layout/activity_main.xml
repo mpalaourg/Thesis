@@ -200,7 +200,7 @@
 
                 <EditText
                     android:id="@+id/editTextNumber"
-                    android:layout_width="307dp"
+                    android:layout_width="290dp"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="15dp"
                     android:ems="10"

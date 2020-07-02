@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.DecimalFormat;
 import java.util.regex.Pattern;
 
 public class CPU_Info {
@@ -23,27 +22,27 @@ public class CPU_Info {
 
         File[] cpuFiles = getCPUs(); // Get number of CPUs
         float totalPercent = 0;
-        String scaling_cur_freq = "";
-        String cpuinfo_min_freq = "";
-        String cpuinfo_max_freq = "";
+        String scaling_cur_freq;
+        String cpuinfo_min_freq;
+        String cpuinfo_max_freq;
 
-        for(int i = 0; i < cpuFiles.length; i++) {
+        for (File cpuFile : cpuFiles) {
             // Files to be read
             String path_scaling_cur_freq =
-                    cpuFiles[i].getAbsolutePath() + "/cpufreq/scaling_cur_freq";
+                    cpuFile.getAbsolutePath() + "/cpufreq/scaling_cur_freq";
             String path_cpuinfo_min_freq =
-                    cpuFiles[i].getAbsolutePath() + "/cpufreq/cpuinfo_min_freq";
+                    cpuFile.getAbsolutePath() + "/cpufreq/cpuinfo_min_freq";
             String path_cpuinfo_max_freq =
-                    cpuFiles[i].getAbsolutePath() + "/cpufreq/cpuinfo_max_freq";
+                    cpuFile.getAbsolutePath() + "/cpufreq/cpuinfo_max_freq";
 
             // Commands to be executed //
             scaling_cur_freq = cmdCat(path_scaling_cur_freq);
             cpuinfo_min_freq = cmdCat(path_cpuinfo_min_freq);
             cpuinfo_max_freq = cmdCat(path_cpuinfo_max_freq);
 
-            scaling_cur_freq = ( scaling_cur_freq.equals("") ) ? "0" : scaling_cur_freq;
-            cpuinfo_min_freq = ( cpuinfo_min_freq.equals("") ) ? "0" : cpuinfo_min_freq;
-            cpuinfo_max_freq = ( cpuinfo_max_freq.equals("") ) ? "0" : cpuinfo_max_freq;
+            scaling_cur_freq = (scaling_cur_freq.equals("")) ? "0" : scaling_cur_freq;
+            cpuinfo_min_freq = (cpuinfo_min_freq.equals("")) ? "0" : cpuinfo_min_freq;
+            cpuinfo_max_freq = (cpuinfo_max_freq.equals("")) ? "0" : cpuinfo_max_freq;
 
             // output = output + myFormat(scaling_cur_freq, cpuinfo_min_freq, cpuinfo_max_freq);
             totalPercent += getUsage(scaling_cur_freq, cpuinfo_min_freq, cpuinfo_max_freq);
@@ -70,12 +69,12 @@ public class CPU_Info {
      * @return percent      -> Float contains the usage percentage.
      */
     private float getUsage(String cur_freq, String cpu_min_freq, String cpu_max_freq){
-        float freq     = (float) Integer.valueOf(cur_freq) / (1000 * 1000);
-        float min_freq = (float) Integer.valueOf(cpu_min_freq) / (1000 * 1000);
-        float max_freq = (float) Integer.valueOf(cpu_max_freq) / (1000 * 1000);
+        float freq     = (float) Integer.parseInt(cur_freq) / (1000 * 1000);
+        float min_freq = (float) Integer.parseInt(cpu_min_freq) / (1000 * 1000);
+        float max_freq = (float) Integer.parseInt(cpu_max_freq) / (1000 * 1000);
         float percent  = (float) 0.0;
         if (max_freq > min_freq){
-            percent = (float) (freq - min_freq) / (max_freq - min_freq);
+            percent = (freq - min_freq) / (max_freq - min_freq);
         }
         return percent * 100;
     }
@@ -88,16 +87,12 @@ public class CPU_Info {
         class CpuFilter implements FileFilter {
             @Override
             public boolean accept(File pathname) {
-                if(Pattern.matches("cpu[0-9]+", pathname.getName())) {
-                    return true;
-                }
-                return false;
+                return Pattern.matches("cpu[0-9]+", pathname.getName());
             }
         }
 
         File dir = new File("/sys/devices/system/cpu/");
-        File[] files = dir.listFiles(new CpuFilter());
-        return files;
+        return dir.listFiles(new CpuFilter());
     }
 
     /** Function to read the files associated with each core.
@@ -124,8 +119,8 @@ public class CPU_Info {
 
             return cmdReturn.toString();
         } catch (IOException e) {
-            e.printStackTrace();
-            return "Something Wrong with the command";
+            System.out.println(e.toString());
+            return "";
         }
     }
 
