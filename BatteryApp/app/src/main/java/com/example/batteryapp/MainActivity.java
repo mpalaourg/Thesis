@@ -8,11 +8,8 @@ import android.content.IntentFilter;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.PowerManager;
-import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -37,6 +34,7 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -45,7 +43,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-    private static TextView textSOC, textTemperature, textVoltage, textTechnology, textStatus, textHealth, textTime;
+    private TextView textSOC, textTemperature, textVoltage, textTechnology, textStatus, textHealth, textTime;
     private FloatingActionButton btnUpload;
     private ProgressBar barCPU;
     private TextView textWifi, textData, textBluetooth, textBrightness, textRAM, textUUID, textCpuUsage;
@@ -178,14 +176,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             if (wifiConnected) {
                 String[] files = fileList();
+                if (files.length == 1) { Toast.makeText(this, "Nothing to upload!", Toast.LENGTH_LONG).show(); }
                 for (String FILE_NAME : files) {
                     System.out.println("Outside if: " + FILE_NAME);
                     if (!FILE_NAME.contains("UUID")) {
                         System.out.println(FILE_NAME);
                         String json = myIOHelper.loadFile(FILE_NAME);
-
+                        /* Just like threads, AsyncTasks can't be reused. You have to create a new instance every time you want to run one.
+                            Ref link: https://stackoverflow.com/a/6879803 */
                         OkHttpAsync okHttpAsync = new OkHttpAsync( this );
-                        okHttpAsync.execute("http://192.168.100.4:5000/postjson", json, FILE_NAME);
+                        okHttpAsync.execute("http://192.168.100.5:5000/postjson", json, FILE_NAME);
 
                     }
                 }
@@ -234,12 +234,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         receiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                boolean wifi = intent.getBooleanExtra("WiFiConnectivity", false);
-                boolean cellular = intent.getBooleanExtra("CellularConnectivity", false);
+                boolean wifi      = intent.getBooleanExtra("WiFiConnectivity", false);
+                boolean cellular  = intent.getBooleanExtra("CellularConnectivity", false);
                 boolean bluetooth = intent.getBooleanExtra("BluetoothConnectivity", false);
-                double RAM = intent.getDoubleExtra("AvailableRAM", 0);
-                int brightness = intent.getIntExtra("Brightness", 0);
-                int usage = intent.getIntExtra("CPU", 0);
+                double RAM        = intent.getDoubleExtra("AvailableRAM", 0);
+                int brightness    = intent.getIntExtra("Brightness", 0);
+                int usage         = intent.getIntExtra("CPU", 0);
+
+                int level         = intent.getIntExtra("BatteryLevel", -1);
+                String status     = intent.getStringExtra("BatteryStatus");
+                String health     = intent.getStringExtra("BatteryHealth");
+                float temperature = intent.getFloatExtra("BatteryTemp", 0.0f);
+                float voltage     = intent.getFloatExtra("BatteryVolt", 0.0f);
+                String technology = intent.getStringExtra("BatteryTech");
+                String date       = intent.getStringExtra("BatteryUpdateDate");
 
                 if (wifi){
                     setWiFiConnectivity("WiFI Enable", Color.GREEN);
@@ -260,11 +268,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 setTextCPU("CPU Usage Estimation: " + usage + "%");
                 setAvailableRam("Available RAM: " + df.format(RAM) + "%");
                 setBrightness("Current Brightness: " + brightness);
+
+                setBatteryLevel("Battery Level Remaining: " + level + "%");
+                setBatteryStatus("Battery Status: " + status);
+                setBatteryHealth("Battery Health: " + health);
+                setBatteryTemp("Battery Temperature: " + temperature+ " \u00B0" + "C");
+                setBatteryVolt("Battery Voltage: " + voltage + " V");
+                setBatteryTech("Battery Technology: " + technology);
+                setUpdateTime("Last Updated: " + date);
             }
         };
-        LocalBroadcastManager.getInstance(this).registerReceiver((receiver),
-                new IntentFilter("UpdateIntent")
-        );
+
+        LocalBroadcastManager.getInstance(this).registerReceiver( (receiver), new IntentFilter("UpdateIntent"));
     }
 
     @Override
@@ -288,6 +303,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onStop() {
         super.onStop();
         System.out.println("Inside Stop");
+        /* If i unregister at onDestroy i will get rid of N/A after closed phone opening the app and missing intents */
         LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver);
     }
 
@@ -393,6 +409,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         private WeakReference<MainActivity> activityReference;
         OkHttpAsync(MainActivity context) { activityReference = new WeakReference<>(context); }
 
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            MainActivity activity = activityReference.get();
+            activity.btnUpload.setEnabled(false);
+        }
+
         /**
          * The method will be called when a OkHttpAsync will be executed. At a response code of 200
          * the file being uploaded will be deleted to save some memory.
@@ -401,7 +424,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
          */
         @Override
         protected String doInBackground(String... params) {
-            OkHttpClient myClient = new OkHttpClient();
+            /* Default timeouts: connectTimeout: 10 seconds, writeTimeout: 10 seconds, readTimeout: 30 seconds */
+            OkHttpClient myClient = new OkHttpClient.Builder().connectTimeout(5, TimeUnit.SECONDS).build();
             MainActivity activity = activityReference.get();
             int postCode;
             try {
@@ -422,6 +446,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     activity.deleteFile(params[2]);
                     return "File Upload Successfully";
                 } else if (postCode == 400){
+                    //myIOHelper.deleteFile(); // Delete the bad formatted files
                     return "Bad request. Please send only json files.";
                 }
                 else {
@@ -443,6 +468,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         protected void onPostExecute(String message) {
             MainActivity activity = activityReference.get();
             Toast.makeText(activity.getApplicationContext(), message, Toast.LENGTH_LONG).show();
+            activity.btnUpload.setEnabled(true);
         }
     }
 }

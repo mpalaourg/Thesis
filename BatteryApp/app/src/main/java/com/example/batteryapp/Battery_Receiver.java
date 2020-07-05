@@ -14,20 +14,15 @@ public class Battery_Receiver extends BroadcastReceiver {
 
     private int level = 0, status, health;
     private float temperature = 0.0f, voltage = 0.0f;
-    private String technology;
-    //private LocalBroadcastManager broadcaster;
+    private String technology, date;
 
-    /** First, initialize the class variables from the (raw) values of the ACTION_BATTERY_CHANGED
-     * received intent. Then, update the battery related TextViews of the UI.
+    /** Initialize the class variables from the (raw) values of the ACTION_BATTERY_CHANGED received intent.
      *
      * @param context -> The Context in which the receiver is running.
      * @param intent  -> The Intent being received.
      */
     @Override
     public void onReceive(Context context, Intent intent) {
-        MainActivity currActivity = new MainActivity();
-        //broadcaster = LocalBroadcastManager.getInstance(this);
-        String text;
 
         // boolean isPresent = intent.getBooleanExtra(BatteryManager.EXTRA_PRESENT, false);
         technology = intent.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY);
@@ -39,58 +34,21 @@ public class Battery_Receiver extends BroadcastReceiver {
         int rawTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
 
         DateFormat df = new SimpleDateFormat("EEE, d MMM yyyy, HH:mm:ss", Locale.getDefault());
-        String date = df.format(Calendar.getInstance().getTime());
+        date = df.format(Calendar.getInstance().getTime());
 
-        if (rawLevel >= 0 && scale > 0) {
-            level = (rawLevel * 100) / scale;
-            text = "Battery Level Remaining: " + level + "%";
-            currActivity.setBatteryLevel(text);
-        }
+        if (rawLevel >= 0 && scale > 0) { level = (rawLevel * 100) / scale; }
 
-        if (rawTemp >=0){
-            temperature = (float) rawTemp / 10;
-            text = "Battery Temperature: " + temperature+ " \u00B0" + "C";
-            currActivity.setBatteryTemp(text);
-        }
+        if (rawTemp >=0){ temperature = (float) rawTemp / 10; }
 
-        if (rawVolt >=0){
-            voltage = (float) rawVolt / 1000;
-            text = "Battery Voltage: " + voltage + " V";
-            currActivity.setBatteryVolt(text);
-        }
+        if (rawVolt >=0){ voltage = (float) rawVolt / 1000; }
 
-        /* Set the class variables */
-        this.setStatus(status);
-        this.setHealth(health);
-        this.setTechnology(technology);
-        this.setVoltage(voltage);
-        this.setTemperature(temperature);
-        this.setLevel(level);
-
-        /* Update battery related TextViews in the UI */
-        currActivity.setBatteryTech("Battery Technology: " + technology);
-        currActivity.setBatteryStatus("Battery Status: " + getStatusString(status));
-        currActivity.setBatteryHealth("Battery Health: " + getHealthString(health));
-        currActivity.setUpdateTime("Last Updated: " + date);
-
-        /* Send the intent to update the UI */
-        /* Intent updateIntent = new Intent("UpdateBatteryIntent");
-        updateIntent.putExtra("level", level);
-        updateIntent.putExtra("temperature", temperature);
-        updateIntent.putExtra("voltage", voltage);
-        updateIntent.putExtra("technology", technology);
-        updateIntent.putExtra("status", getStatusString(status));
-        updateIntent.putExtra("health", getHealthString(health));
-        updateIntent.putExtra("updateTime", date);
-
-        broadcaster.sendBroadcast(updateIntent); */
     }
 
     /** Get the String representation of battery health.
      * @param health int value of the enum
      * @return String representation of battery health.
      */
-    private String getHealthString(int health) {
+    public String getHealthString(int health) {
         String healthString = "Unknown";
 
         switch (health) {
@@ -117,7 +75,7 @@ public class Battery_Receiver extends BroadcastReceiver {
      * @param status int value of the enum
      * @return String representation of battery status.
      */
-    private String getStatusString(int status) {
+    public String getStatusString(int status) {
         String statusString = "Unknown";
 
         switch (status) {
@@ -137,24 +95,6 @@ public class Battery_Receiver extends BroadcastReceiver {
         return statusString;
     }
 
-    /** @param level -> Battery level to set (int values indicating percentage) */
-    public void setLevel(int level) { this.level = level;}
-
-    /** @param status -> Battery status to set (int values check for the mapping) */
-    public void setStatus(int status) { this.status = status; }
-
-    /** @param health -> Battery health to set (int values check for the mapping) */
-    public void setHealth(int health) { this.health = health;}
-
-    /** @param temperature -> Battery temperature to set (float values in Celsius) */
-    public void setTemperature(float temperature) { this.temperature = temperature; }
-
-    /** @param voltage -> Battery voltage to set (float values in Volt) */
-    public void setVoltage(float voltage) { this.voltage = voltage; }
-
-    /** @param technology -> Battery technology to set (String descriptions) */
-    public void setTechnology(String technology) { this.technology = technology; }
-
     /** @return the current level of the battery (int values indicating percentage) */
     public int getLevel() { return level; }
 
@@ -172,4 +112,8 @@ public class Battery_Receiver extends BroadcastReceiver {
 
     /** @return the technology of the battery (String descriptions) */
     public String getTechnology() { return technology; }
+
+    /** @return the Date of the latest battery intent (String representation) */
+    public String getDate() { return date; }
+
 }

@@ -13,8 +13,11 @@ import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
@@ -24,6 +27,8 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -37,11 +42,10 @@ public class MyService extends Service {
     private LocalBroadcastManager broadcaster;
     private PowerManager.WakeLock wl;
     private PowerManager pm;
-
-    private int level = 0, status, health;
+    private int level = 0, status, health, availCapacity;
     private float temperature = 0.0f, voltage = 0.0f;
-    private String technology, brandModel, packageName;
-    private boolean bluetooth, wifi, cellular, batteryOptimization;
+    private String technology, brandModel, androidVersion;
+    private boolean bluetooth, wifi, cellular, hotspot, GPS, isInteractive;
     private double  RAM;
     private int     usage, brightness, sampleFreq;
     private long    timestamp;
@@ -55,7 +59,6 @@ public class MyService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        packageName = getPackageName();
         timer = new Timer();
         myCPUInfo = new CPU_Info();
         myBroadcast  = new Battery_Receiver();
@@ -93,6 +96,7 @@ public class MyService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
         brandModel = Build.BRAND + "-" + Build.MODEL;
+        androidVersion = Build.VERSION.RELEASE;
         sampleFreq = intent.getIntExtra("SampleFreq", 10);
         userID     = intent.getStringExtra("userID");
         FILE_NAME  = intent.getStringExtra("FILENAME");
@@ -100,21 +104,25 @@ public class MyService extends Service {
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                batteryOptimization = !pm.isIgnoringBatteryOptimizations(packageName);
                 timestamp = System.currentTimeMillis();
-                usage = getCPUUsage();
-                level = myBroadcast.getLevel();
-                status = myBroadcast.getStatus();
-                health = myBroadcast.getHealth();
-                temperature = myBroadcast.getTemperature();
-                voltage     = myBroadcast.getVoltage();
-                technology  = myBroadcast.getTechnology();
+                usage     = getCPUUsage();
 
-                wifi     = getWiFiConnectivity();
-                cellular = getCellularConnectivity();
-                bluetooth = getBluetoothConnectivity();
-                RAM = Math.round( getAvailableRAM() * 100.0) / 100.0;
-                brightness = getBrightness();
+                level         = myBroadcast.getLevel();
+                status        = myBroadcast.getStatus();
+                health        = myBroadcast.getHealth();
+                temperature   = myBroadcast.getTemperature();
+                voltage       = myBroadcast.getVoltage();
+                technology    = myBroadcast.getTechnology();
+                availCapacity = getRemainingCapacityPercentage();
+
+                wifi          = getWiFiConnectivity();
+                cellular      = getCellularConnectivity();
+                bluetooth     = getBluetoothConnectivity();
+                hotspot       = getWiFiTetheringConnectivity();
+                GPS           = checkGPSEnabled();
+                RAM           = Math.round( getAvailableRAM() * 100.0) / 100.0;
+                isInteractive = pm.isInteractive();
+                brightness    = getBrightness(isInteractive);
 
                 /* Send the intent to update the UI */
                 Intent updateIntent = new Intent("UpdateIntent");
@@ -124,10 +132,18 @@ public class MyService extends Service {
                 updateIntent.putExtra("AvailableRAM", RAM);
                 updateIntent.putExtra("Brightness", brightness);
                 updateIntent.putExtra("CPU", usage);
+
+                updateIntent.putExtra("BatteryLevel", level);
+                updateIntent.putExtra("BatteryStatus", myBroadcast.getStatusString(status) );
+                updateIntent.putExtra("BatteryHealth", myBroadcast.getHealthString(health) );
+                updateIntent.putExtra("BatteryTemp", temperature);
+                updateIntent.putExtra("BatteryVolt", voltage);
+                updateIntent.putExtra("BatteryTech", technology);
+                updateIntent.putExtra("BatteryUpdateDate", myBroadcast.getDate());
                 broadcaster.sendBroadcast(updateIntent);
 
-                String json = toJsonString(userID, level, temperature, voltage, technology, status, health, usage, bluetooth, wifi, cellular,
-                                            RAM, brightness, sampleFreq, brandModel, batteryOptimization, timestamp);
+                String json = toJsonString(userID, level, temperature, voltage, technology, status, health, usage, bluetooth, wifi, cellular, hotspot,
+                                            GPS, RAM, brightness, isInteractive, sampleFreq, brandModel, androidVersion, availCapacity, timestamp);
                 System.out.println(timestamp);
                 myIOHelper.saveFile(FILE_NAME, json);
 
@@ -321,6 +337,24 @@ public class MyService extends Service {
     }
 
     /**
+     * Get via reflection if network tethering (hotspot) is enable.
+     * @return (boolean) True if Tethering is Enable. False otherwise.
+     */
+    public boolean getWiFiTetheringConnectivity() {
+        boolean isSuccess = false;
+        WifiManager tempWifi = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        try {
+            final Method method = tempWifi.getClass().getDeclaredMethod("isWifiApEnabled");
+            method.setAccessible(true); //in the case of visibility change in future APIs
+            isSuccess = (boolean) method.invoke(tempWifi);
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+
+        return isSuccess;
+    }
+
+    /**
      * See if the bluetooth adapter is present and then check if is enable.
      * @return (boolean) True if Bluetooth is Enable. False otherwise.
      */
@@ -330,6 +364,15 @@ public class MyService extends Service {
         if (mBluetoothAdapter == null) {
             return false;
         } else return mBluetoothAdapter.isEnabled();
+    }
+
+    /**
+     * See if the GPS is enabled or disabled.
+     * @return (boolean) True if GPS Provider is Enable. False otherwise.
+     */
+    public boolean checkGPSEnabled() {
+        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        return lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
     }
 
     /**
@@ -356,15 +399,32 @@ public class MyService extends Service {
     }
 
     /**
-     * Get the screen current brightness.
+     * Get the screen current brightness. If screen is interactive, read the current brightness.
+     * Otherwise current brightness is 0.
      * @return (int) The current brightness of the Screen.
      */
-    public int getBrightness() {
-        return Settings.System.getInt(
-                getContentResolver(),
-                Settings.System.SCREEN_BRIGHTNESS,
-                0
-        );
+    public int getBrightness(boolean isInteractive) {
+        if (isInteractive) {
+            return Settings.System.getInt(
+                    getContentResolver(),
+                    Settings.System.SCREEN_BRIGHTNESS,
+                    0 );
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * Get the remaining battery capacity as a percentage.
+     * @return the remaining battery capacity as an int percentage.
+     */
+    public int getRemainingCapacityPercentage() {
+        BatteryManager mBatteryManager = (BatteryManager) getSystemService(Context.BATTERY_SERVICE);
+        int capacityPercentage = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+        if(capacityPercentage == Integer.MIN_VALUE)
+            return 0;
+
+        return capacityPercentage;
     }
 
     /**
@@ -372,7 +432,8 @@ public class MyService extends Service {
      * @return (String) The json to be written.
      */
     public String toJsonString(String userID, int level, float temperature, float voltage, String technology, int status, int health, int usage,
-                               boolean bluetooth, boolean wifi, boolean cellular, double RAM, int brightness, int sampleFreq, String brandModel, boolean batteryOptimization, long timestamp){
+                               boolean bluetooth, boolean wifi, boolean cellular, boolean hotspot, boolean GPS, double RAM, int brightness, boolean isInteractive,
+                               int sampleFreq, String brandModel, String androidVersion, int availCapacity, long timestamp){
         return "{ \"ID\": \"" + userID + "\",\n" +
                 " \"level\": " + level + ",\n" +
                 " \"temperature\": " + temperature + ",\n" +
@@ -383,12 +444,16 @@ public class MyService extends Service {
                 " \"usage\": " + usage + ",\n" +
                 " \"WiFi\": \"" + wifi + "\",\n" +
                 " \"Cellular\": \"" + cellular + "\",\n" +
+                " \"Hotspot\": \"" + hotspot + "\",\n" +
+                " \"GPS\": \"" + GPS + "\",\n" +
                 " \"Bluetooth\": \"" + bluetooth + "\",\n" +
                 " \"RAM\": " + RAM + ",\n" +
                 " \"Brightness\": " + brightness + ",\n" +
+                " \"isInteractive\": \"" + isInteractive + "\",\n" +
                 " \"SampleFreq\": " + sampleFreq + ",\n" +
                 " \"brandModel\": \"" + brandModel + "\",\n" +
-                " \"batteryOptimization\": \"" + batteryOptimization + "\",\n" +
+                " \"androidVersion\": \"" + androidVersion + "\",\n" +
+                " \"availCapacityPercentage\": " + availCapacity + ",\n" +
                 " \"Timestamp\": " + timestamp + "},";
     }
 }
