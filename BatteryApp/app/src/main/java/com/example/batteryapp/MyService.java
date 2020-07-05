@@ -23,7 +23,6 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.provider.Settings;
 
-import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -53,8 +52,7 @@ public class MyService extends Service {
     /** Function which is called at the creation of the Service. First, initialize class variables.
      * Then a partial WakeLock will be acquired, to prevent the DOZE Mode to effect the sampling of
      * the Service. A receiver will be register to wait for "ACTION_BATTERY_CHANGED" intents. Finally,
-     * for androids version after O will a create a foreground service with a notification, where the
-     * proper notification channel is initialized. Otherwise, the service has a simple notification.
+     * the foreground will be started, with the proper notification.
      */
     @Override
     public void onCreate() {
@@ -71,11 +69,7 @@ public class MyService extends Service {
         wl.acquire();
 
         registerBatteryLevelReceiver();
-
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O)
-            startMyOwnForeground();
-        else
-            startForeground(1, new Notification());
+        startMyOwnForeground();
     }
 
     /**
@@ -208,30 +202,65 @@ public class MyService extends Service {
     }
 
     /**
-     * Function to start my own Foreground Service. At first, the channel for the notification
-     * must be initialized. Then, the notification is created, with proper title, icons and an activity
-     * intent, so the user can by clicking the notification to open the (already open) app.
+     * Function to start my own Foreground Service. For androids version after O will a create a foreground
+     * service with a notification, where the proper notification channel is initialized. Otherwise, no channel will be created.
+     * Then, the notification is created, with proper title, icons and an activity intent, so the
+     * user can by clicking the notification to open the (already open) app.
      */
-    @RequiresApi(Build.VERSION_CODES.O)
+    //@RequiresApi(Build.VERSION_CODES.O)
     private void startMyOwnForeground()  {
-        String NOTIFICATION_CHANNEL_ID = "example.permanence";
-        String channelName = "Background Service";
-        NotificationChannel chan = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_NONE);
-        chan.setLightColor(Color.BLUE);
-        chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
-
-        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        assert manager != null;
-        manager.createNotificationChannel(chan);
-
         Intent activityIntent = new Intent(this, MainActivity.class );
         activityIntent.addCategory(Intent.CATEGORY_LAUNCHER);
         activityIntent.setAction(Intent.ACTION_MAIN);
         activityIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent contentIntent = PendingIntent.getActivity (this, 0 , activityIntent , 0 ) ;
-
         Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.my_icon);
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+            String NOTIFICATION_CHANNEL_ID = "example.permanence";
+            String channelName = "Background Service";
+            NotificationChannel chan = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_MIN);
+            chan.setLightColor(Color.BLUE);
+            chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            assert manager != null;
+            manager.createNotificationChannel(chan);
+
+            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
+            Notification notification = notificationBuilder
+                    .setContentTitle(getResources().getString(R.string.app_name))
+                    .setTicker(getResources().getString(R.string.app_name))
+                    .setContentText(getResources().getString(R.string.my_string))
+                    .setSmallIcon(R.drawable.my_icon)
+                    .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 170, false))
+                    .setContentIntent(contentIntent)
+                    .setAutoCancel(true)
+                    .setOngoing(true)
+                    .build();
+            startForeground(2, notification);
+
+            // Toast.makeText(this, "Geia sou elina (if) ", Toast.LENGTH_LONG).show();
+        } else {
+            /* For android below 8.0 . Not being tested */
+            Notification.Builder notificationBuilder = new Notification.Builder(this);
+            Notification notification = notificationBuilder
+                    .setContentTitle(getResources().getString(R.string.app_name))
+                    .setTicker(getResources().getString(R.string.app_name))
+                    .setContentText(getResources().getString(R.string.my_string))
+                    .setSmallIcon(R.drawable.my_icon)
+                    .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 170, false))
+                    .setContentIntent(contentIntent)
+                    //.setOnlyAlertOnce(true)
+                    .setAutoCancel(true)
+                    .setOngoing(true)
+                    .build();
+            startForeground(1, notification);
+           // Toast.makeText(this, "Geia sou elina (else)", Toast.LENGTH_LONG).show();
+        }
+
+
+        /*NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
         Notification notification = notificationBuilder
                 .setContentTitle(getResources().getString(R.string.app_name))
                 .setTicker(getResources().getString(R.string.app_name))
@@ -242,7 +271,7 @@ public class MyService extends Service {
                 .setAutoCancel(true)
                 .setOngoing(true)
                 .build();
-        startForeground(2, notification);
+        startForeground(2, notification);*/
     }
 
     /**

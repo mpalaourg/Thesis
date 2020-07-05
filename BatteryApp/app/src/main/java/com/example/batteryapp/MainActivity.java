@@ -182,6 +182,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     if (!FILE_NAME.contains("UUID")) {
                         System.out.println(FILE_NAME);
                         String json = myIOHelper.loadFile(FILE_NAME);
+                        System.out.println(json);
                         /* Just like threads, AsyncTasks can't be reused. You have to create a new instance every time you want to run one.
                             Ref link: https://stackoverflow.com/a/6879803 */
                         OkHttpAsync okHttpAsync = new OkHttpAsync( this );
@@ -446,7 +447,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     activity.deleteFile(params[2]);
                     return "File Upload Successfully";
                 } else if (postCode == 400){
-                    //myIOHelper.deleteFile(); // Delete the bad formatted files
+                    //activity.deleteFile(params[2]); // Delete the bad formatted files
                     return "Bad request. Please send only json files.";
                 }
                 else {
