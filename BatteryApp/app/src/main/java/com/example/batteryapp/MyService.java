@@ -219,6 +219,7 @@ public class MyService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
             String NOTIFICATION_CHANNEL_ID = "example.permanence";
             String channelName = "Background Service";
+            //NotificationChannel chan = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_LOW); // low or min?
             NotificationChannel chan = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_MIN);
             chan.setLightColor(Color.BLUE);
             chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
@@ -240,9 +241,8 @@ public class MyService extends Service {
                     .build();
             startForeground(2, notification);
 
-            // Toast.makeText(this, "Geia sou elina (if) ", Toast.LENGTH_LONG).show();
         } else {
-            /* For android below 8.0 . Not being tested */
+            /* For android below 8.0 . Not tested yet*/
             Notification.Builder notificationBuilder = new Notification.Builder(this);
             Notification notification = notificationBuilder
                     .setContentTitle(getResources().getString(R.string.app_name))
@@ -256,7 +256,6 @@ public class MyService extends Service {
                     .setOngoing(true)
                     .build();
             startForeground(1, notification);
-           // Toast.makeText(this, "Geia sou elina (else)", Toast.LENGTH_LONG).show();
         }
 
 

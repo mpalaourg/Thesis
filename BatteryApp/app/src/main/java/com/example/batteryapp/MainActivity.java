@@ -17,7 +17,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -30,6 +29,7 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Scanner;
@@ -60,6 +60,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Intent myServiceIntent;
     private MyService myService;
     private BroadcastReceiver receiver;
+    private ArrayList<OkHttpAsync> AsyncTasksList;
 
     /* Called when the activity is first created. */
 
@@ -78,8 +79,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         System.out.println("Inside Create");
         setContentView(R.layout.activity_main);
         myIOHelper = new IOHelper(this);
+        AsyncTasksList = new ArrayList<>();
         initializeComponents();
-        //myIOHelper.deleteFile(); // Delete for now the files being saved.
+        // myIOHelper.deleteFile(); // Delete for now the files being saved.
 
         /* Create a unique id per user, only for the 1st time */
         File f = new File(getFilesDir() + "/UUID.txt");
@@ -110,7 +112,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         /* By default sampling frequency is 10 seconds */
         sampleFreq = 10;
-
         myService = new MyService();
         myServiceIntent = new Intent(this, myService.getClass());
         /* Pass the arguments to the service */
@@ -121,10 +122,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             startService(myServiceIntent);
         }
 
-        /* File upload */
-        btnUpload.setOnClickListener(this);
-        /* Change Sampling Frequency */
-        btnSubmit.setOnClickListener(this);
+        btnUpload.setOnClickListener(this); /* File upload */
+        btnSubmit.setOnClickListener(this); /* Change Sampling Frequency */
 
         /* Not necessary i have the Wake Locks
         Intent intent = new Intent();
@@ -176,22 +175,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             if (wifiConnected) {
                 String[] files = fileList();
-                if (files.length == 1) { Toast.makeText(this, "Nothing to upload!", Toast.LENGTH_LONG).show(); }
+                if (files.length == 1) { ToastManager.showToast(this, "Nothing to upload!"); }
                 for (String FILE_NAME : files) {
-                    System.out.println("Outside if: " + FILE_NAME);
+                    // System.out.println("Outside if: " + FILE_NAME);
                     if (!FILE_NAME.contains("UUID")) {
-                        System.out.println(FILE_NAME);
+                        // System.out.println(FILE_NAME);
                         String json = myIOHelper.loadFile(FILE_NAME);
-                        System.out.println(json);
                         /* Just like threads, AsyncTasks can't be reused. You have to create a new instance every time you want to run one.
                             Ref link: https://stackoverflow.com/a/6879803 */
-                        OkHttpAsync okHttpAsync = new OkHttpAsync( this );
+                        OkHttpAsync okHttpAsync = new OkHttpAsync(this);
+                        AsyncTasksList.add(okHttpAsync);
                         okHttpAsync.execute("http://192.168.100.5:5000/postjson", json, FILE_NAME);
 
                     }
                 }
             } else {
-                Toast.makeText(this, "WiFi is Disabled. Upload only via WiFi.", Toast.LENGTH_LONG).show();
+                ToastManager.showToast(this, "WiFi is Disabled. Upload only via WiFi.");
             }
         } else if (v == btnSubmit){
             String userInput = textSampleFreq.getText().toString();
@@ -203,7 +202,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     textSampleFreq.setError("Sampling frequency must be equal or less than 10.");
                 } else {
                     sampleFreq = tempInput;
-                    Toast.makeText(this, "Your current Sampling Frequency is: " + sampleFreq + " seconds.", Toast.LENGTH_LONG).show();
+                    ToastManager.showToast(this, "Your current Sampling Frequency is: " + sampleFreq + " seconds.");
+                    textSampleFreq.setHint("Current is " + sampleFreq + " seconds.");
                     /* Stop the previous service and start a new one */
                     stopService(myServiceIntent);
                     myServiceIntent = new Intent(this, myService.getClass());
@@ -265,7 +265,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 } else {
                     setBluetoothConnectivity("Bluetooth Disable", Color.BLACK);
                 }
-                setCPUbar(usage);
+                setProgressBarCPU(usage);
                 setTextCPU("CPU Usage Estimation: " + usage + "%");
                 setAvailableRam("Available RAM: " + df.format(RAM) + "%");
                 setBrightness("Current Brightness: " + brightness);
@@ -306,6 +306,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         System.out.println("Inside Stop");
         /* If i unregister at onDestroy i will get rid of N/A after closed phone opening the app and missing intents */
         LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver);
+        ToastManager.dismissToast();
+        for (int i = 0; i < AsyncTasksList.size(); i++) {
+            /* Calling this method will result in onCancelled(Object) being invoked on the UI thread
+               after doInBackground(Object[]) returns. Calling this method guarantees that onPostExecute(Object)
+               is never subsequently invoked, even if cancel returns false, but onPostExecute has not yet run.  */
+            AsyncTasksList.get(i).cancel(true);
+        }
     }
 
     /**
@@ -316,7 +323,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onDestroy() {
         super.onDestroy();
         System.out.println("Inside Destroy of Activity. Calling StopService ...");
-        // Cancel the Async Task here? //
         stopService(myServiceIntent);
         // myService.onDestroy();
     }
@@ -391,7 +397,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         textData.setText(text);
         textData.setTextColor(color);
     }
-    public void setCPUbar(int usage) {
+    public void setProgressBarCPU(int usage) {
         barCPU.setProgress(usage);
     }
     public void setTextCPU(String text) {
@@ -425,38 +431,44 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
          */
         @Override
         protected String doInBackground(String... params) {
-            /* Default timeouts: connectTimeout: 10 seconds, writeTimeout: 10 seconds, readTimeout: 30 seconds */
-            OkHttpClient myClient = new OkHttpClient.Builder().connectTimeout(5, TimeUnit.SECONDS).build();
-            MainActivity activity = activityReference.get();
-            int postCode;
-            try {
-                RequestBody body = RequestBody.create(JSON, params[1]);
-                Request request = new Request.Builder()
-                        .header("name", params[2])
-                        .url(params[0])
-                        .post(body)
-                        .build();
-                Response response = myClient.newCall(request).execute();
-                postCode = response.code();
-                /* Without it, i get a warning: W/System.out: A resource failed to call response.body().close(). */
-                if (response.body() != null) { response.body().close(); }
-
-                // System.out.println(postCode);
-                if (postCode == 200) {
-                    /* Delete the file until now. If the app don't close immediately, the remaining json files will be written the next time */
-                    activity.deleteFile(params[2]);
-                    return "File Upload Successfully";
-                } else if (postCode == 400){
-                    //activity.deleteFile(params[2]); // Delete the bad formatted files
-                    return "Bad request. Please send only json files.";
+            // TODO CHECK IF THE Async Task has been cancelled
+            if (!isCancelled()) {
+                /* Default timeouts: connectTimeout: 10 seconds, writeTimeout: 10 seconds, readTimeout: 30 seconds */
+                OkHttpClient myClient = new OkHttpClient.Builder().connectTimeout(5, TimeUnit.SECONDS).build();
+                MainActivity activity = activityReference.get();
+                int postCode;
+                try {
+                    RequestBody body = RequestBody.create(JSON, params[1]);
+                    Request request = new Request.Builder()
+                            .header("name", params[2])
+                            .url(params[0])
+                            .post(body)
+                            .build();
+                    Response response = myClient.newCall(request).execute();
+                    postCode = response.code();
+                    /* Without it, i get a warning: W/System.out: A resource failed to call response.body().close(). */
+                    if (response.body() != null) {
+                        response.body().close();
+                    }
+                    // System.out.println(postCode);
+                    if (postCode == 200) {
+                        /* Delete the file until now. If the app don't close immediately, the remaining json files will be written the next time */
+                        activity.deleteFile(params[2]);
+                        return "File Upload Successfully";
+                    } else if (postCode == 400) {
+                        //activity.deleteFile(params[2]); // Delete the bad formatted files
+                        return "Bad request. Please send only json files.";
+                    } else {
+                        return "Something went wrong. Try again later.";
+                    }
+                } catch (IOException e) {
+                    // System.out.println(e.toString());
+                    String exceptionName = e.getClass().getCanonicalName();
+                    return exceptionName + ". Try again later.";
                 }
-                else {
-                    return "Something went wrong. Try again later.";
-                }
-            } catch (IOException e) {
-                System.out.println(e.toString());
-                String exceptionName = e.getClass().getCanonicalName();
-                return exceptionName + ". Try again later.";
+            } else {
+                System.out.println("Task has been cancelled");
+                return "Task has been cancelled";
             }
         }
 
@@ -468,7 +480,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         protected void onPostExecute(String message) {
             MainActivity activity = activityReference.get();
-            Toast.makeText(activity.getApplicationContext(), message, Toast.LENGTH_LONG).show();
+            ToastManager.showToast(activity.getApplicationContext(), message);
             activity.btnUpload.setEnabled(true);
         }
     }

@@ -9,17 +9,20 @@ def hello():
 
 @app.route('/postjson', methods = ['POST'])
 def postJsonHandler():
-    if request.is_json:
-        header  = request.headers.get('name')
-        content = request.get_json()
-        client = MongoClient('localhost', 27017)
-        db = client.mydb
-        col = db[header]   # Create new collection
-        
-        post_id = col.insert_many(content)
-        return "JSON received!", 200
+  if request.is_json:
+    header  = request.headers.get('name')
+    content = request.get_json()
+    if content:
+      client = MongoClient('localhost', 27017)
+      db = client.mydb
+      col = db[header]   # Create new collection
+      
+      post_id = col.insert_many(content)
+      return "JSON received!", 200
     else:
-        return "Request wasn't JSON", 400
+      return "Empty JSON", 400
+  else:
+    return "Request wasn't JSON", 400
 
 if __name__ == "__main__":
   app.run("0.0.0.0", "5000")
