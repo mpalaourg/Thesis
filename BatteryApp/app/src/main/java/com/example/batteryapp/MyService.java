@@ -257,20 +257,6 @@ public class MyService extends Service {
                     .build();
             startForeground(1, notification);
         }
-
-
-        /*NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
-        Notification notification = notificationBuilder
-                .setContentTitle(getResources().getString(R.string.app_name))
-                .setTicker(getResources().getString(R.string.app_name))
-                .setContentText(getResources().getString(R.string.my_string))
-                .setSmallIcon(R.drawable.my_icon)
-                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 170, false))
-                .setContentIntent(contentIntent)
-                .setAutoCancel(true)
-                .setOngoing(true)
-                .build();
-        startForeground(2, notification);*/
     }
 
     /**

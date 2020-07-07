@@ -17,6 +17,7 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/AppTheme">
 
+        <receiver android:name=".AlarmReceiver"> </receiver>
         <activity android:name=".MainActivity"
             android:screenOrientation="portrait" >
             <intent-filter>

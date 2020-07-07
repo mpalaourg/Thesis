@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">BatteryApp</string>
     <string name="my_string">Thank you for helping with my Thesis</string>
+    <string name="NotificationString">A friendly reminder to use my app</string>
     <string name="TextBatteryLevel">Battery level: N/A</string>
     <string name="TextBatteryTemperature">Battery Temperature: N/A</string>
     <string name="batteryInfo">Battery Stats for your device ...</string>

@@ -1,6 +1,8 @@
 package com.example.batteryapp;
 
 import android.app.ActivityManager;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -30,6 +32,7 @@ import java.lang.ref.WeakReference;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Scanner;
@@ -104,6 +107,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             setTextUUID("Your Unique userID is: " + userID);
         }
 
+        // scheduleNotification();
         /* Create the file for the current use */
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault());
         String todayDate = dateFormat.format(new Date());
@@ -325,6 +329,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         System.out.println("Inside Destroy of Activity. Calling StopService ...");
         stopService(myServiceIntent);
         // myService.onDestroy();
+    }
+
+    /**
+     * Schedule a notification in 24 hours from when the user last use the app.
+     */
+    public void scheduleNotification() {
+        Intent alarmIntent = new Intent(MainActivity.this, AlarmReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        AlarmManager manager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Calendar calendar = Calendar.getInstance();
+        //calendar.add(Calendar.DATE, 1);
+        calendar.add(Calendar.MINUTE, 2);
+        manager.setExact(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
     }
 
     /**
