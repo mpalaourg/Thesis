@@ -19,4 +19,7 @@
     <string name="textSampleFreq">Pick a Sampling Frequency between 5 and 10 seconds.</string>
     <string name="hintEditText">Default is 10 seconds.</string>
     <string name="TextButtonSubmit">submit</string>
+    <string name="TextStartSession">START SESSION</string>
+    <string name="TextEndSession">END SESSION</string>
+    <string name="TextSwitch">Upload Only via WiFi  </string>
 </resources>

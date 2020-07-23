@@ -16,8 +16,10 @@ import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -51,7 +53,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ProgressBar barCPU;
     private TextView textWifi, textData, textBluetooth, textBrightness, textRAM, textUUID, textCpuUsage;
     private EditText textSampleFreq;
-    private Button btnSubmit;
+    private Button btnSubmit, btnStartSession, btnEndSession;
+    private Switch switchWiFiUpload;
 
     private static String userID, FILE_NAME;
     private static DecimalFormat df = new DecimalFormat("0.00");
@@ -64,6 +67,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private MyService myService;
     private BroadcastReceiver receiver;
     private ArrayList<OkHttpAsync> AsyncTasksList;
+    private boolean UPLOAD_VIA_WIFI_ONLY = true;
 
     /* Called when the activity is first created. */
 
@@ -107,7 +111,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             setTextUUID("Your Unique userID is: " + userID);
         }
 
-        // scheduleNotification();
+        scheduleNotification();
         /* Create the file for the current use */
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault());
         String todayDate = dateFormat.format(new Date());
@@ -128,6 +132,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         btnUpload.setOnClickListener(this); /* File upload */
         btnSubmit.setOnClickListener(this); /* Change Sampling Frequency */
+        btnStartSession.setOnClickListener(this); /* Start the Session - Minimize the app */
+        btnEndSession.setOnClickListener(this); /* End the Session - Close the app */
+
+        switchWiFiUpload.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                UPLOAD_VIA_WIFI_ONLY = isChecked;
+            }
+        });
 
         /* Not necessary i have the Wake Locks
         Intent intent = new Intent();
@@ -172,12 +185,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View v) {
         if (v == btnUpload) {
-            boolean wifiConnected = false;
+            boolean WiFiConnected = false;
+            boolean CellularConnected = false;
             ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
             NetworkInfo activeInfo = connMgr.getActiveNetworkInfo();
-            if (activeInfo != null && activeInfo.isConnected()) { wifiConnected = activeInfo.getType() == ConnectivityManager.TYPE_WIFI; }
-
-            if (wifiConnected) {
+            if (!UPLOAD_VIA_WIFI_ONLY) {
+                if (activeInfo != null && activeInfo.isConnected()) { CellularConnected = activeInfo.getType() == ConnectivityManager.TYPE_MOBILE; }
+            }
+            if (activeInfo != null && activeInfo.isConnected()) { WiFiConnected = activeInfo.getType() == ConnectivityManager.TYPE_WIFI; }
+            if (WiFiConnected || CellularConnected) {
                 String[] files = fileList();
                 if (files.length == 1) { ToastManager.showToast(this, "Nothing to upload!"); }
                 for (String FILE_NAME : files) {
@@ -189,12 +205,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             Ref link: https://stackoverflow.com/a/6879803 */
                         OkHttpAsync okHttpAsync = new OkHttpAsync(this);
                         AsyncTasksList.add(okHttpAsync);
-                        okHttpAsync.execute("http://192.168.100.5:5000/postjson", json, FILE_NAME);
-
+                        // okHttpAsync.execute("http://192.168.100.5:5000/postjson", json, FILE_NAME);
+                        okHttpAsync.execute("http://188.117.230.241:5000/postjson", json, FILE_NAME);
                     }
                 }
             } else {
-                ToastManager.showToast(this, "WiFi is Disabled. Upload only via WiFi.");
+                if (UPLOAD_VIA_WIFI_ONLY) { ToastManager.showToast(this, "WiFi is Disabled. Upload only via WiFi."); }
+                else { ToastManager.showToast(this, "No internet Connection"); }
             }
         } else if (v == btnSubmit){
             String userInput = textSampleFreq.getText().toString();
@@ -224,6 +241,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (view != null) { inputManager.hideSoftInputFromWindow(view.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS); }
             textSampleFreq.setText("");
             textSampleFreq.clearFocus();
+        } else if (v == btnStartSession){
+            btnStartSession.setText("Resume Session");
+            Intent startMain = new Intent(Intent.ACTION_MAIN);
+            startMain.addCategory(Intent.CATEGORY_HOME);
+            startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(startMain);
+        } else if (v == btnEndSession){
+            finish();
         }
     }
 
@@ -291,6 +316,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onResume() {
         super.onResume();
         System.out.println("Inside Resume");
+        // updateUI() Unregister the receiver onDestroy
     }
 
     @Override
@@ -339,10 +365,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         PendingIntent pendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         AlarmManager manager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Calendar calendar = Calendar.getInstance();
-        //calendar.add(Calendar.DATE, 1);
-        calendar.add(Calendar.MINUTE, 2);
+        calendar.add(Calendar.DATE, 1);
+        //calendar.add(Calendar.MINUTE, 2);
         manager.setExact(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
     }
+
+    /* private members of the Main Activity and call them to update the UI */
+    /* private void updateUI() {
+        if (wifi){
+            setWiFiConnectivity("WiFI Enable", Color.GREEN);
+            setCellularConnectivity("Data Disable", Color.BLACK);
+        }else if (cellular){
+            setWiFiConnectivity("WiFI Disable", Color.BLACK);
+            setCellularConnectivity("Data Enable", Color.GREEN);
+        } else {
+            setWiFiConnectivity("WiFI Disable", Color.BLACK);
+            setCellularConnectivity("Data Disable", Color.BLACK);
+        }
+        if (bluetooth){
+            setBluetoothConnectivity("Bluetooth Enable", Color.GREEN);
+        } else {
+            setBluetoothConnectivity("Bluetooth Disable", Color.BLACK);
+        }
+        setProgressBarCPU(usage);
+        setTextCPU("CPU Usage Estimation: " + usage + "%");
+        setAvailableRam("Available RAM: " + df.format(RAM) + "%");
+        setBrightness("Current Brightness: " + brightness);
+
+        setBatteryLevel("Battery Level Remaining: " + level + "%");
+        setBatteryStatus("Battery Status: " + status);
+        setBatteryHealth("Battery Health: " + health);
+        setBatteryTemp("Battery Temperature: " + temperature+ " \u00B0" + "C");
+        setBatteryVolt("Battery Voltage: " + voltage + " V");
+        setBatteryTech("Battery Technology: " + technology);
+        setUpdateTime("Last Updated: " + date);
+    } */
 
     /**
      * All the views (Buttons, TextViews, ProgressBar etc) of the activity will be initialized here.
@@ -367,9 +424,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnUpload = findViewById(R.id.btnUpload);
         textUUID  = findViewById(R.id.UserID);
 
-        textSampleFreq = findViewById(R.id.editTextNumber);
-        btnSubmit      = findViewById(R.id.btnSubmit);
+        textSampleFreq  = findViewById(R.id.editTextNumber);
+        btnSubmit       = findViewById(R.id.btnSubmit);
+        btnStartSession = findViewById(R.id.btnStartSession);
+        btnEndSession   = findViewById(R.id.btnEndSession);
 
+        switchWiFiUpload = findViewById(R.id.switchUpload);
+        switchWiFiUpload.setTextOn("Yes"); // displayed text of the Switch whenever it is in checked or on state
+        switchWiFiUpload.setTextOff("No");
+        switchWiFiUpload.setChecked(true);
     }
 
     /**
@@ -473,9 +536,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         activity.deleteFile(params[2]);
                         return "File Upload Successfully";
                     } else if (postCode == 400) {
-                        //activity.deleteFile(params[2]); // Delete the bad formatted files
-                        return "Bad request. Please send only json files.";
-                    } else {
+                        /* File either not a json, or a bad header, or only one (or less) item with empty collection */
+                        activity.deleteFile(params[2]);
+                        return "Bad request. Either not a json file or only one item with your json.";
+                    } else if (postCode == 417){
+                        /* File size is less than 648 */
+                        return "Something went wrong. File size too small.";
+                    }
+                    else {
                         return "Something went wrong. Try again later.";
                     }
                 } catch (IOException e) {

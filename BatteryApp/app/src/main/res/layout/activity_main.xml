@@ -218,21 +218,41 @@
 
             </LinearLayout>
 
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/btnUpload"
-                android:layout_width="61dp"
-                android:layout_height="56dp"
-                android:layout_gravity="center"
-                android:layout_marginBottom="25dp"
-                android:background="@android:color/holo_blue_bright"
-                android:foregroundGravity="center"
-                android:src="@android:drawable/stat_sys_upload"
-                app:fabSize="normal" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnStartSession"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/TextStartSession" />
+
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/btnUpload"
+                    android:layout_width="61dp"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/holo_blue_bright"
+                    android:foregroundGravity="center"
+                    android:src="@android:drawable/stat_sys_upload"
+                    app:fabSize="normal" />
+
+                <Button
+                    android:id="@+id/btnEndSession"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/TextEndSession" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/UserID"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
                 android:gravity="center"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -245,6 +265,17 @@
                 android:gravity="center"
                 android:text="@string/TextUpdateTime"
                 android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <Switch
+                android:id="@+id/switchUpload"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginTop="5dp"
+                android:layout_marginEnd="8dp"
+                android:showText="true"
+                android:text="@string/TextSwitch"
                 android:textStyle="bold" />
 
         </LinearLayout>

@@ -251,7 +251,6 @@ public class MyService extends Service {
                     .setSmallIcon(R.drawable.my_icon)
                     .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 170, false))
                     .setContentIntent(contentIntent)
-                    //.setOnlyAlertOnce(true)
                     .setAutoCancel(true)
                     .setOngoing(true)
                     .build();
