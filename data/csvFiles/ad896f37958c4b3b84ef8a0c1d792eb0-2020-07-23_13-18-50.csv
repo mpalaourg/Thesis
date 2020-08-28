@@ -1,9 +1,0 @@
-_id,ID,level,temperature,voltage,technology,status,health,usage,WiFi,Cellular,Hotspot,GPS,Bluetooth,RAM,Brightness,isInteractive,SampleFreq,brandModel,androidVersion,availCapacityPercentage,Timestamp
-5f19660ef0e5322e1f999e06,ad896f37958c4b3b84ef8a0c1d792eb0,74,42.0,3.99,Li-poly,3,2,100,false,true,false,true,false,19.6,610,true,10,xiaomi-Redmi Note 7,9,73,1595499530402
-5f19660ef0e5322e1f999e07,ad896f37958c4b3b84ef8a0c1d792eb0,74,42.0,3.99,Li-poly,3,2,36,false,true,false,true,false,19.68,610,true,10,xiaomi-Redmi Note 7,9,73,1595499540404
-5f19660ef0e5322e1f999e08,ad896f37958c4b3b84ef8a0c1d792eb0,74,42.0,3.99,Li-poly,3,2,32,false,true,false,true,false,19.64,610,true,10,xiaomi-Redmi Note 7,9,73,1595499550402
-5f19660ef0e5322e1f999e09,ad896f37958c4b3b84ef8a0c1d792eb0,73,42.0,3.986,Li-poly,3,2,40,false,true,false,true,false,19.87,0,false,10,xiaomi-Redmi Note 7,9,73,1595499560403
-5f19660ef0e5322e1f999e0a,ad896f37958c4b3b84ef8a0c1d792eb0,73,42.0,3.986,Li-poly,3,2,43,false,true,false,true,false,19.88,0,false,10,xiaomi-Redmi Note 7,9,73,1595499570403
-5f19660ef0e5322e1f999e0b,ad896f37958c4b3b84ef8a0c1d792eb0,73,42.0,4.017,Li-poly,3,2,39,false,true,false,true,false,20.67,720,true,10,xiaomi-Redmi Note 7,9,73,1595499580402
-5f19660ef0e5322e1f999e0c,ad896f37958c4b3b84ef8a0c1d792eb0,73,42.0,3.992,Li-poly,3,2,100,false,true,false,true,false,19.79,720,true,10,xiaomi-Redmi Note 7,9,73,1595499590403
-5f19660ef0e5322e1f999e0d,ad896f37958c4b3b84ef8a0c1d792eb0,73,43.0,3.963,Li-poly,3,2,100,false,true,false,true,false,18.76,720,true,10,xiaomi-Redmi Note 7,9,73,1595499600402
