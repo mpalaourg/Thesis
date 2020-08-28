@@ -1,0 +1,15 @@
+_id,ID,level,temperature,voltage,technology,status,health,usage,WiFi,Cellular,Hotspot,GPS,Bluetooth,RAM,Brightness,isInteractive,SampleFreq,brandModel,androidVersion,availCapacityPercentage,Timestamp
+5f41666374fece020662fef5,75d4ba95bc9d40a8a7bc46591107660e,77,38.0,4.012,Li-poly,3,2,100,true,false,false,false,false,36.64,95,true,10,xiaomi-Mi A2,10,77,1594114840576
+5f41666374fece020662fef6,75d4ba95bc9d40a8a7bc46591107660e,77,38.0,4.012,Li-poly,3,2,50,true,false,false,false,false,37.09,95,true,10,xiaomi-Mi A2,10,76,1594114850576
+5f41666374fece020662fef7,75d4ba95bc9d40a8a7bc46591107660e,77,38.0,4.012,Li-poly,3,2,50,true,false,false,false,false,37.06,95,true,10,xiaomi-Mi A2,10,76,1594114860576
+5f41666374fece020662fef8,75d4ba95bc9d40a8a7bc46591107660e,77,38.0,4.012,Li-poly,3,2,50,true,false,false,false,false,36.76,95,true,10,xiaomi-Mi A2,10,76,1594114870577
+5f41666374fece020662fef9,75d4ba95bc9d40a8a7bc46591107660e,77,38.0,4.012,Li-poly,3,2,50,true,false,false,false,false,36.71,95,true,10,xiaomi-Mi A2,10,76,1594114880576
+5f41666374fece020662fefa,75d4ba95bc9d40a8a7bc46591107660e,77,38.0,4.012,Li-poly,3,2,50,true,false,false,false,false,36.71,95,true,10,xiaomi-Mi A2,10,76,1594114890576
+5f41666374fece020662fefb,75d4ba95bc9d40a8a7bc46591107660e,76,39.0,3.998,Li-poly,3,2,50,true,false,false,false,false,36.69,95,true,10,xiaomi-Mi A2,10,76,1594114900576
+5f41666374fece020662fefc,75d4ba95bc9d40a8a7bc46591107660e,76,39.0,3.998,Li-poly,3,2,50,true,false,false,false,false,36.7,95,true,10,xiaomi-Mi A2,10,76,1594114910576
+5f41666374fece020662fefd,75d4ba95bc9d40a8a7bc46591107660e,76,39.0,3.998,Li-poly,3,2,50,true,false,false,false,false,36.68,95,true,10,xiaomi-Mi A2,10,76,1594114920576
+5f41666374fece020662fefe,75d4ba95bc9d40a8a7bc46591107660e,76,39.0,4.01,Li-poly,3,2,50,true,false,false,false,false,36.7,0,false,10,xiaomi-Mi A2,10,76,1594114930577
+5f41666374fece020662feff,75d4ba95bc9d40a8a7bc46591107660e,76,39.0,4.01,Li-poly,3,2,50,true,false,false,false,false,36.7,0,false,10,xiaomi-Mi A2,10,76,1594114940577
+5f41666374fece020662ff00,75d4ba95bc9d40a8a7bc46591107660e,76,38.0,4.023,Li-poly,3,2,50,true,false,false,false,false,36.74,95,true,10,xiaomi-Mi A2,10,76,1594114950576
+5f41666374fece020662ff01,75d4ba95bc9d40a8a7bc46591107660e,76,38.0,4.023,Li-poly,3,2,50,true,false,false,false,false,36.6,95,true,10,xiaomi-Mi A2,10,76,1594114960577
+5f41666374fece020662ff02,75d4ba95bc9d40a8a7bc46591107660e,76,38.0,4.023,Li-poly,3,2,50,true,false,false,false,false,37.12,95,true,10,xiaomi-Mi A2,10,76,1594114970577
