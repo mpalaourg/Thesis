@@ -78,7 +78,7 @@ public class IOHelper {
     }
 
     /**
-     * Delete all the files except the UUID.txt
+     * Delete all the files except the UUID.txt (for DEBUG only)
      */
     public void deleteFile(){
         String[] files = fileContext.fileList();

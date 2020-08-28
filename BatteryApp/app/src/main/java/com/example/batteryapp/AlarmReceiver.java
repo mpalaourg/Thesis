@@ -26,8 +26,6 @@ public class AlarmReceiver extends BroadcastReceiver {
      */
     @Override
     public void onReceive(Context context, Intent intent) {
-        // System.out.println("Inside onReceive: " + System.currentTimeMillis());
-
         Intent activityIntent = new Intent(context, MainActivity.class );
         activityIntent.addCategory(Intent.CATEGORY_LAUNCHER);
         activityIntent.setAction(Intent.ACTION_MAIN);
@@ -77,13 +75,14 @@ public class AlarmReceiver extends BroadcastReceiver {
             manager.notify(4, notification);
         }
 
-        /* Schedule the next alarm
+        /* Schedule the next alarm */
         Intent alarmIntent = new Intent(context, AlarmReceiver.class);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, alarmIntent, 0);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        //long interval = 1000*60*60;
-        long interval = 1000*30;
-        manager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + interval, pendingIntent); */
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DATE, 1);
+        manager.setExact(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
+
     }
 
 }

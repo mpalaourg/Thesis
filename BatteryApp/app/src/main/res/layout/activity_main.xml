@@ -246,7 +246,17 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/TextEndSession" />
+
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/textFiles"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:textSize="20sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/UserID"

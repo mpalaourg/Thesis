@@ -12,6 +12,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -51,7 +52,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView textSOC, textTemperature, textVoltage, textTechnology, textStatus, textHealth, textTime;
     private FloatingActionButton btnUpload;
     private ProgressBar barCPU;
-    private TextView textWifi, textData, textBluetooth, textBrightness, textRAM, textUUID, textCpuUsage;
+    private TextView textWifi, textData, textBluetooth, textBrightness, textRAM, textUUID, textCpuUsage, textFiles;
     private EditText textSampleFreq;
     private Button btnSubmit, btnStartSession, btnEndSession;
     private Switch switchWiFiUpload;
@@ -68,6 +69,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private BroadcastReceiver receiver;
     private ArrayList<OkHttpAsync> AsyncTasksList;
     private boolean UPLOAD_VIA_WIFI_ONLY = true;
+    private long lastClickTime = 0;
 
     /* Called when the activity is first created. */
 
@@ -88,7 +90,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         myIOHelper = new IOHelper(this);
         AsyncTasksList = new ArrayList<>();
         initializeComponents();
-        // myIOHelper.deleteFile(); // Delete for now the files being saved.
 
         /* Create a unique id per user, only for the 1st time */
         File f = new File(getFilesDir() + "/UUID.txt");
@@ -142,15 +143,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         });
 
-        /* Not necessary i have the Wake Locks
-        Intent intent = new Intent();
-        String packageName = getPackageName();
-        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-            intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-            intent.setData(Uri.parse("package:" + packageName));
-            startActivity(intent);
-        }*/
+        updateTextFiles();
     }
 
     /**
@@ -185,6 +178,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View v) {
         if (v == btnUpload) {
+            if (SystemClock.elapsedRealtime() - lastClickTime < 5000){ return; }    // Double click
+            lastClickTime = SystemClock.elapsedRealtime();
             boolean WiFiConnected = false;
             boolean CellularConnected = false;
             ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -205,8 +200,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             Ref link: https://stackoverflow.com/a/6879803 */
                         OkHttpAsync okHttpAsync = new OkHttpAsync(this);
                         AsyncTasksList.add(okHttpAsync);
-                        // okHttpAsync.execute("http://192.168.100.5:5000/postjson", json, FILE_NAME);
-                        okHttpAsync.execute("http://188.117.230.241:5000/postjson", json, FILE_NAME);
+                        okHttpAsync.execute("http://hostmpalaourgthesis.ddns.net:5000/postjson", json, FILE_NAME);
                     }
                 }
             } else {
@@ -242,7 +236,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             textSampleFreq.setText("");
             textSampleFreq.clearFocus();
         } else if (v == btnStartSession){
-            btnStartSession.setText("Resume Session");
+            btnStartSession.setText(R.string.TextResumeSession);
             Intent startMain = new Intent(Intent.ACTION_MAIN);
             startMain.addCategory(Intent.CATEGORY_HOME);
             startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -306,6 +300,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 setBatteryVolt("Battery Voltage: " + voltage + " V");
                 setBatteryTech("Battery Technology: " + technology);
                 setUpdateTime("Last Updated: " + date);
+                updateTextFiles();
             }
         };
 
@@ -323,6 +318,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onPause() {
         super.onPause();
         System.out.println("Inside Pause");
+        btnStartSession.setText(R.string.TextResumeSession);
     }
 
     /**
@@ -354,7 +350,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onDestroy();
         System.out.println("Inside Destroy of Activity. Calling StopService ...");
         stopService(myServiceIntent);
-        // myService.onDestroy();
+    }
+
+    /**
+     * This method will count the number of files -minus the UUID.txt- and set the
+     * text to show the appropriate message for the user.
+     */
+    private void updateTextFiles() {
+        String[] files = fileList();
+        String text;
+        int numberOfFiles = files.length - 1;   // Without the UUID.txt
+        if (numberOfFiles == 0){
+            text = "Nothing to upload!";
+        } else if (numberOfFiles == 1){
+            text = "You only have the current file ready for upload.";
+        } else {
+            text = "You have " + numberOfFiles + " files ready for upload.";
+        }
+        setTextFiles(text);
     }
 
     /**
@@ -366,7 +379,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         AlarmManager manager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Calendar calendar = Calendar.getInstance();
         calendar.add(Calendar.DATE, 1);
-        //calendar.add(Calendar.MINUTE, 2);
         manager.setExact(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
     }
 
@@ -423,6 +435,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         btnUpload = findViewById(R.id.btnUpload);
         textUUID  = findViewById(R.id.UserID);
+        textFiles = findViewById(R.id.textFiles);
 
         textSampleFreq  = findViewById(R.id.editTextNumber);
         btnSubmit       = findViewById(R.id.btnSubmit);
@@ -486,6 +499,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void setTextUUID(String text) {
         textUUID.setText(text);
     }
+    public void setTextFiles(String text) {
+        textFiles.setText(text);
+    }
 
     /**
      * The class responsible to upload the json to the server. A WeakReference will be used to the
@@ -499,8 +515,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            MainActivity activity = activityReference.get();
-            activity.btnUpload.setEnabled(false);
+            // MainActivity activity = activityReference.get();
+            // activity.btnUpload.setEnabled(false);
         }
 
         /**
@@ -514,7 +530,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // TODO CHECK IF THE Async Task has been cancelled
             if (!isCancelled()) {
                 /* Default timeouts: connectTimeout: 10 seconds, writeTimeout: 10 seconds, readTimeout: 30 seconds */
-                OkHttpClient myClient = new OkHttpClient.Builder().connectTimeout(5, TimeUnit.SECONDS).build();
+                OkHttpClient myClient = new OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).build();
                 MainActivity activity = activityReference.get();
                 int postCode;
                 try {
@@ -566,7 +582,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         protected void onPostExecute(String message) {
             MainActivity activity = activityReference.get();
             ToastManager.showToast(activity.getApplicationContext(), message);
-            activity.btnUpload.setEnabled(true);
+            activity.updateTextFiles();
+            // activity.btnUpload.setEnabled(true);
         }
     }
 }
