@@ -1,6 +1,5 @@
 package com.example.batteryapp;
 
-import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -14,8 +13,6 @@ import android.graphics.Color;
 import android.os.Build;
 
 import androidx.core.app.NotificationCompat;
-
-import java.util.Calendar;
 
 public class AlarmReceiver extends BroadcastReceiver {
 
@@ -74,14 +71,6 @@ public class AlarmReceiver extends BroadcastReceiver {
             assert manager != null;
             manager.notify(4, notification);
         }
-
-        /* Schedule the next alarm */
-        Intent alarmIntent = new Intent(context, AlarmReceiver.class);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.DATE, 1);
-        manager.setExact(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
 
     }
 
