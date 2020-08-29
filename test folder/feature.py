@@ -57,6 +57,10 @@ if __name__ == "__main__":
             # Feature for usage. Very unstable -> Time window
             size = math.ceil(60/df.iloc[-1]["SampleFreq"])
             df["usageWindow"] = getWindow(df["usage"], size)
+            
+            # Number of sample. So i can i dSOC[i]/number of sample => get dSOC
+            df["sampleNumber"] = [i for i in range(df["voltage"].size)]
+
             # Features from True | False
             df["WiFi_ConUsage"] = MyCumsum( df["WiFi"] )
             df["Cellular_ConUsage"] = MyCumsum( df["Cellular"] )

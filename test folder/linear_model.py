@@ -1,11 +1,11 @@
 '''
-    GBDT model for prediction on dSOC/dt
+    Linear model for prediction on dSOC/dt
 '''
 import os
 import numpy as np
 import pandas
 import matplotlib.pyplot as plt
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 import metrics
 import helpers
@@ -24,12 +24,8 @@ if __name__== "__main__" :
         y = np.array( df["output"] )
         
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2)
-        # partial fit (not in GradientBoostingRegressor) or warm_start is what i need for train the model over and over?
-        regressor = GradientBoostingRegressor(
-            max_depth=3,
-            n_estimators=257,
-            learning_rate=0.147,
-        )
+        
+        regressor = LinearRegression()
         # i need sizes of (n_Samples, features) , (n_Samples, )
         regressor.fit(X_train, y_train) 
         y_pred = regressor.predict(X_test)
@@ -44,10 +40,24 @@ if __name__== "__main__" :
         R_sq = metrics.r2_score(y_test, y_pred) # does not be affected by percentage
         adj_R_sq = 1 - (1 - R_sq) * (len(y_train) - 1) / (len(y_train) - X_train.shape[1] - 1)
         print(f"MSPE = {round(MSPE,4)}\tRMSPE = {round(RMSPE,4)}\tMAPE = {round(MAPE,4)}\tR^2 = {round(R_sq,4)}\tadjusted R^2 = {round(adj_R_sq,4)} for user {user}")
-
+        
         ## Plots ##
-        sampleNumber = np.array( X_test["sampleNumber"] )
-        helpers.plot_dSOC(y_test, y_pred, sampleNumber)
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        ax1.plot(y_test, color = 'blue', label = 'Real value', marker = 'o')
+        ax1.plot(y_pred, color = 'red', label = 'Estimated value', marker = 'o')
+        ax1.set_title(f"dSOC/dt")
+        ax1.set(ylabel = 'dSOC/dt', xlabel = 'Test Case')
+        ax1.set_xlim(0, len(y_test))
+        ax1.legend()
+
+        #AE = abs( y_test - y_pred)
+        APE = helpers.APE(y_test, y_pred)
+        ax2.scatter(range(len(y_test)), APE, label = 'Absolute Percentage Error', color = 'black', marker = 'o')    
+        ax2.set_title(f"Error of dSOC/dt Estimation")
+        ax2.legend()
+        ax2.set(ylabel = 'APE (%)', xlabel = 'Test Case')
+        ax2.set_xlim(0, len(y_test))
+        
         plt.show()
 
         #MSE at each tree (best = 2)

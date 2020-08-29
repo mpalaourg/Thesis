@@ -41,5 +41,6 @@ if __name__ == "__main__":
                 output.append(currOutput)
             #output[0] = output[-1]
             df['output'] = output
+            df = df[1:]                             # drop first sample => output=0, here or before?
             df.to_csv(fileName, ",", index=False)
             print(f"Done with: {fileName}")
