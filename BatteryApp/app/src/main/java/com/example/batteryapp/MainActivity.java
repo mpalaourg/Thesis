@@ -178,7 +178,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View v) {
         if (v == btnUpload) {
-            if (SystemClock.elapsedRealtime() - lastClickTime < 5000){ return; }    // Double click
+            if (SystemClock.elapsedRealtime() - lastClickTime < 8000){ return; }    // Double click
             lastClickTime = SystemClock.elapsedRealtime();
             boolean WiFiConnected = false;
             boolean CellularConnected = false;
@@ -200,7 +200,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             Ref link: https://stackoverflow.com/a/6879803 */
                         OkHttpAsync okHttpAsync = new OkHttpAsync(this);
                         AsyncTasksList.add(okHttpAsync);
-                        okHttpAsync.execute("http://hostmpalaourgthesis.ddns.net:5000/postjson", json, FILE_NAME);
+                        //okHttpAsync.execute("http://hostmpalaourgthesis.ddns.net:5000/postjson", json, FILE_NAME);
+                        okHttpAsync.execute("http://83.212.110.253:5000/postjson", json, FILE_NAME);
                     }
                 }
             } else {
@@ -378,9 +379,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         PendingIntent pendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         AlarmManager manager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Calendar calendar = Calendar.getInstance();
-        //calendar.add(Calendar.DATE, 1);
-        calendar.add(Calendar.HOUR, 1);
-        long repeat = 60 * 60 * 1000;
+
+        calendar.add(Calendar.DATE, 1); long repeat = 1 * 24 * 60 * 60 * 1000;
+        // calendar.add(Calendar.HOUR, 12); long repeat = 12 * 60 * 60 * 1000;
+        // calendar.add(Calendar.HOUR, 6); long repeat = 6 * 60 * 60 * 1000;
         manager.setInexactRepeating(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), repeat, pendingIntent);
     }
 
@@ -558,7 +560,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         activity.deleteFile(params[2]);
                         return "Bad request. Either not a json file or only one item with your json.";
                     } else if (postCode == 417){
-                        /* File size is less than 648 */
+                        /* File size is less than 648 aka damaged*/
+                        activity.deleteFile(params[2]);
                         return "Something went wrong. File size too small.";
                     }
                     else {
@@ -584,7 +587,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         protected void onPostExecute(String message) {
             MainActivity activity = activityReference.get();
             ToastManager.showToast(activity.getApplicationContext(), message);
-            activity.updateTextFiles();
+            if (!message.contains("Try again later")) {
+                activity.updateTextFiles();
+            }
             // activity.btnUpload.setEnabled(true);
         }
     }
