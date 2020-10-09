@@ -35,24 +35,26 @@ def barUsageType(usageTypes):
     for p in ax.patches:
         ax.annotate(np.round(p.get_height(),decimals=2), (p.get_x()+p.get_width()/2., p.get_height()), 
                              ha='center', va='center', xytext=(0, 6), textcoords='offset points')
-    ax.set_title("Session Type Histrogram")
+    ax.set_title("Session Type Histrogram", fontweight='bold')
     myLabels = [myLabels[int( label.get_text() )] for label in ax.get_xticklabels()]
-    ax.set_xticklabels(myLabels)
-    ax.set_xlabel("Type of Session")
-    ax.set_ylabel("Appearances")
+    ax.set_xticklabels(myLabels, fontweight='bold')
+    ax.set_xlabel("Session type", fontweight='bold')
+    ax.set_ylabel("Appearances", fontweight='bold')
     plt.show()
 
 def barFilesUser(usersID):
     freqFileUpload = Counter(usersID)
     df = pandas.DataFrame.from_dict(freqFileUpload, orient='index')
-    ax = df.plot.bar(rot=15, legend=False)
+    ax = df.plot.hist(rot=10, bins=10, legend=False)
+
     for p in ax.patches:
-        ax.annotate(np.round(p.get_height(),decimals=2), (p.get_x()+p.get_width()/2., p.get_height()), 
-                             ha='center', va='center', xytext=(0, 6), textcoords='offset points')
-    ax.set_title("Upload per User BarPlot")
-    ax.set_xticklabels(freqFileUpload.keys(), fontsize=7)
-    ax.set_xlabel("User Unique ID")
-    ax.set_ylabel("# of Files Uploaded")
+        if p.get_height() > 0:
+            ax.annotate(np.round(p.get_height(),decimals=2), (p.get_x()+p.get_width()/2., p.get_height()), 
+                                ha='center', va='center', xytext=(0, 6), textcoords='offset points')
+    ax.set_title("Files Uploaded Histrogram", fontweight='bold')
+    ax.set_xlabel("# of files uploaded bins", fontweight='bold')
+    ax.set_ylabel("# of Users", fontweight='bold')
+    
     plt.show()
 
 def getUsageDrop(csvFile):
@@ -61,29 +63,31 @@ def getUsageDrop(csvFile):
     if 3 in batteryStatus and not 2 in batteryStatus:
         initialLevel = df.iloc[0]['level']
         finalLevel = df.iloc[-1]['level']
+        if initialLevel-finalLevel < 0:
+            print(csvFile)
         return initialLevel-finalLevel
     
 def barUsageDrop(usageDrops):
     Not_none_values = filter(None.__ne__, usageDrops)
     usageDrops = list(Not_none_values)
     df = pandas.DataFrame(usageDrops)
-    n = math.ceil( (max(usageDrops) - min(usageDrops)) / 0.05)              # bins size of 0.05
+    n = math.ceil( (max(usageDrops) - min(usageDrops)) / 5)              # bins size of 5
     
     ax = df.plot.hist(bins=n, legend=False)
     for p in ax.patches:
         ax.annotate(np.round(p.get_height(),decimals=2), (p.get_x()+p.get_width()/2., p.get_height()), 
                              ha='center', va='center', xytext=(0, 6), textcoords='offset points')
-    ax.set_title("Battery Level Drop Histogram")
-    ax.set_xlabel("Battery level drop bins")
-    ax.set_ylabel("Frequency")
+    ax.set_title("Battery Level Drop Histogram", fontweight='bold')
+    ax.set_xlabel("Battery level drop bins", fontweight='bold')
+    ax.set_ylabel("Frequency", fontweight='bold')
     
     hist, bin_edges= np.histogram(usageDrops, n)
     cumsum_data = np.cumsum(hist)
     plt.figure()
-    plt.title("Distribution of Battery Level Drop")
+    plt.title("Distribution of Battery Level Drop", fontweight='bold')
     plt.step(bin_edges[:-1], cumsum_data/cumsum_data[-1])
-    plt.xlabel("Battery level drop")
-    plt.ylabel("Cumulative distribution function (CDF)")
+    plt.xlabel("Battery level drop", fontweight='bold')
+    plt.ylabel("Cumulative distribution function (CDF)", fontweight='bold')
     plt.show()
 
 def getSessionDuration(csvFile):
@@ -98,28 +102,29 @@ def barSessiontDuration(sessionDuration):
     Not_none_values = filter(None.__ne__, sessionDuration)
     sessionDuration = list(Not_none_values)
     df = pandas.DataFrame(sessionDuration)
-    n = math.ceil( (max(sessionDuration) - min(sessionDuration)) / 20)              # bins size of 20
+    n = math.ceil( (max(sessionDuration) - min(sessionDuration)) / 30)              # bins size of 30
     
     ax = df.plot.hist(bins=n, legend=False)
     for p in ax.patches:
-        ax.annotate(np.round(p.get_height(),decimals=2), (p.get_x()+p.get_width()/2., p.get_height()), 
-                             ha='center', va='center', xytext=(0, 6), textcoords='offset points')
-    ax.set_title("Session Duration Histogram")
-    ax.set_xlabel("Session Duration bins [mins]")
-    ax.set_ylabel("Frequency")
+        if p.get_height()>0:
+            ax.annotate(np.round(p.get_height(),decimals=2), (p.get_x()+p.get_width()/2., p.get_height()), 
+                                 ha='center', va='center', xytext=(0, 6), textcoords='offset points')
+    ax.set_title("Session Duration Histogram", fontweight='bold')
+    ax.set_xlabel("Session Duration bins [mins]", fontweight='bold')
+    ax.set_ylabel("Frequency", fontweight='bold')
     
     hist, bin_edges= np.histogram(sessionDuration, n)
     cumsum_data = np.cumsum(hist)
     plt.figure()
-    plt.title("Distribution of Session Duration")
+    plt.title("Distribution of Session Duration", fontweight='bold')
     plt.step(bin_edges[:-1], cumsum_data/cumsum_data[-1])
-    plt.xlabel("Session Duration (Minutes)")
-    plt.ylabel("Cumulative distribution function (CDF)")
+    plt.xlabel("Session Duration (Minutes)", fontweight='bold')
+    plt.ylabel("Cumulative distribution function (CDF)", fontweight='bold')
     plt.show()
 
 def dataStats(allSessions=False):
     current_directory = os.getcwd()
-    csv_directory = current_directory + '\\data\\csvFiles_norm'
+    csv_directory = current_directory + '\\data\\csvFiles'
 
     try:
         os.chdir(csv_directory)
@@ -132,21 +137,15 @@ def dataStats(allSessions=False):
 
     usageTypes = [getTypeOfUsage(csvFile) for csvFile in currentFileList]
     barUsageType(usageTypes) # Uncomment for plot
-
+    
     usersID = [csvFile.split('-')[0] for csvFile in currentFileList]
     barFilesUser(usersID) #Uncomment for plot
-
+    
     #usageDrops = []
-    #for csvFile in currentFileList:
-    #    if (getTypeOfUsage(csvFile) == TYPE_DISCHARGING) or allSessions:
-    #        usageDrops.append( getUsageDrop(csvFile) )
     usageDrops = [getUsageDrop(csvFile) for csvFile in currentFileList] #None for non Discharging profiles
     barUsageDrop(usageDrops) #Uncomment for plot
 
     #sessionDuration = []
-    #for csvFile in currentFileList:
-    #    if (getTypeOfUsage(csvFile) == TYPE_DISCHARGING) or allSessions:
-    #        sessionDuration.append( getSessionDuration(csvFile) )
     sessionDuration = [getSessionDuration(csvFile) for csvFile in currentFileList] #None for non Discharging profiles
     barSessiontDuration(sessionDuration) #Uncomment for plot    
 
@@ -156,4 +155,3 @@ def dataStats(allSessions=False):
     except OSError:
         print("Can't change the Current Working Directory")
         exit()    
-    
