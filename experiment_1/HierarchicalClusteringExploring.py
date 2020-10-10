@@ -14,7 +14,7 @@ from sklearn import metrics
 
 # Plot correlation for the columns of the dataframe
 def plotCorr(df):
-    umDF = df.copy()
+    numDF = df.copy()
     numDF = numDF.drop(["Hotspot"], axis=1)
     f = plt.figure(figsize=(11, 11))
     corr = numDF.corr()
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     
     # Uncomment for dataframe description #
     #print(df.describe())
-    #plotCorr(df)
+    plotCorr(df)
 
     # After the first run, you don't have to compute the distance matrix again. You can read it from the pickle file
     #distance = gower.gower_matrix(df)
