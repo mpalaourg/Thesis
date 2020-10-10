@@ -1,4 +1,4 @@
-# Xgboost choose variables to keep from init best model...
+# Xgboost best models ...
 import pandas
 import numpy as np
 import os
@@ -18,13 +18,19 @@ if __name__== "__main__" :
     # Get dummy variables for boolean
     df = pandas.get_dummies(df, columns = ["GPS", "Bluetooth", "Connectivity"])
     #df = df.drop(["GPS", "Bluetooth", "Connectivity"], axis=1)
-        
-    # Initial best models for parameter selection (after model_xgboost.py)
-    regressor_0 = XGBRegressor(n_estimators=1000, learning_rate=0.05, max_depth=6, colsample_bytree=0.60, reg_lambda=0.30)
+
+    # The best models for each label (after model_tune_xgboost.py)
+    regressor_0 = XGBRegressor(n_estimators=600, learning_rate=0.06, max_depth=8, colsample_bytree=0.35, reg_lambda=0.30)
     regressor_1 = XGBRegressor(n_estimators=1000, learning_rate=0.03, max_depth=8, colsample_bytree=0.50, reg_lambda=0.40)
     regressors = [copy(regressor_0), copy(regressor_1)]
-    sel_regressors = [copy(regressor_0), copy(regressor_1)]
     
+    # The selected column names for each label
+    column_0 = ['Brightness^2', 'temperature Brightness', 'usage Brightness', 'level', 'Brightness', 'level^2', 
+                'level Brightness', 'usage^2', 'level temperature']
+    column_1 = ['Brightness^2', 'usage Brightness', 'Brightness', 'temperature Brightness', 'level temperature', 'level^2', 
+                'level Brightness', 'Brightness RAM', 'level', 'level RAM']
+    selColumns = [column_0, column_1]
+
     labels = [0, 1] # The only meaningfull clusters and with the necessarily points
     for idx, label in enumerate(labels):
         df_label = df[ (df["label"] == label) ]
@@ -54,6 +60,9 @@ if __name__== "__main__" :
         y_label = df_label["output"]
         X_label = df_label.drop(["output"], axis=1)
         
+        # Keep only the selected columns for each labels
+        X_label = X_label[selColumns[idx]]
+
         # Split data training and testing ...
         X_train_label, X_test_label, y_train_label, y_test_label = train_test_split(X_label, y_label, test_size=0.25, random_state=42)
         
@@ -70,68 +79,44 @@ if __name__== "__main__" :
         pair=zip(importances, feature_list)
         pair=sorted(pair, reverse=False)
         feature_list = [feature for _, feature in pair]
-        importances = [round(importance, 2) for importance, _ in pair]
-        plt.title(f"Feature Importance [xgboost model_{label}]", fontweight='bold')
+        importances = [importance for importance, _ in pair]
+        plt.title(f"Feature Importance [selected xgboost model_{label}]", fontweight='bold')
         plt.barh(feature_list, importances)
         plt.xlabel("Feature importance", fontweight='bold')
         plt.show()
         
-        ''' Uncoment to compute best threshold for importance via cross validation on Train set
-        # Fit model using each importance as a threshold
-        thresholds = np.sort(regressor.feature_importances_)
-        MAEs=[]
-        for thresh in np.unique(thresholds):
-            # select features using threshold
-            selection = SelectFromModel(regressor, threshold=thresh, prefit=True)
-            select_X_train_label = selection.transform(X_train_label)
-            # train model
-            selection_model = sel_regressors[idx]
-            #selection_model.fit(select_X_train_label, y_train_label)
-            scoring = ['neg_mean_absolute_error', 'neg_root_mean_squared_error']
-            scores = cross_validate(selection_model, select_X_train_label, y_train_label, cv=3, scoring=scoring, return_train_score=True)
-            print(f"thres: {thresh} - MAE: {np.mean(scores['test_neg_mean_absolute_error'])} - RMSE: {np.mean(scores['test_neg_root_mean_squared_error'])} model_{label}")
-            MAEs.append( abs(np.mean(scores['test_neg_mean_absolute_error'])) )
-        # Plot mean MAE per importance threshold
-        plt.figure()
-        plt.plot(np.unique(thresholds), MAEs)
-        plt.title(f"Performance for different feature importance [xgboost model_{label}]", fontweight='bold')
-        plt.ylabel('Mean MAE', fontweight='bold')
-        plt.xlabel('Feature importance threshold', fontweight='bold')
-        plt.show()
-        '''
-        
         #''' Uncomment for ploting ...
-        # Plotting initial model ...
+        # Plotting selected model ...
         y_pred_label = regressor.predict(X_test_label)
         y_pred_label[ np.where(y_pred_label < 0) ] = 0 
         print(f"RMSE: {metrics.mean_squared_error(y_test_label, y_pred_label, squared=False)}, ΜΑΕ {metrics.mean_absolute_error(y_test_label, y_pred_label)} model_{label}")
         error = abs(y_test_label-y_pred_label)
         plt.figure()
-        plt.title(f"Prediction error histogram [xgboost model_{label}]", fontweight='bold')
+        plt.title(f"Prediction error histogram [selected xgboost model_{label}]", fontweight='bold')
         plt.hist(error)
         plt.xlabel("Error bins", fontweight='bold')
         plt.ylabel("Appearances", fontweight='bold')
         plt.show()
         
+        plt.figure()
+        plt.plot(range(len(y_test_label)), y_test_label, color = 'blue', label = 'Real value', marker = 'o')
+        plt.plot(range(len(y_pred_label)), y_pred_label, color = 'red', label = 'Estimated value', marker = 'o')
+        plt.title(f"Estimation of energy drain [selected xgboost model_{label}]", fontweight='bold')
+        plt.ylabel('Energy drain', fontweight='bold')
+        plt.xlabel('Test Case', fontweight='bold')
+        plt.legend()
+        plt.show()
+        
         fig, axs = plt.subplots(2)
-        axs[0].set_title(f"Estimation of energy drain [xgboost model_{label}] zoomed", fontweight='bold')
+        axs[0].set_title(f"Estimation of energy drain [selected xgboost model_{label}] zoomed", fontweight='bold')
         axs[0].plot(range(len(y_test_label[350:380])), y_test_label[350:380], color = 'blue', label = 'Real value', marker = 'o')
         axs[0].plot(range(len(y_pred_label[350:380])), y_pred_label[350:380], color = 'red', label = 'Estimated value', marker = 'o')
         axs[0].set_ylabel('Energy drain', fontweight='bold')
         axs[0].legend()
         
         axs[1].plot(range(len(y_pred_label[350:380])), y_test_label[350:380]-y_pred_label[350:380], color = 'blue', label = 'Error', marker = 'o')
-        axs[1].set_title(f"Estimation error [xgboost model_{label}] zoomed", fontweight='bold')
+        axs[1].set_title(f"Estimation error [selected xgboost model_{label}] zoomed", fontweight='bold')
         axs[1].set_ylabel('Error', fontweight='bold')
         axs[1].set_xlabel('Test Case', fontweight='bold')
         axs[1].legend()
-        plt.show()
-
-        plt.figure()
-        plt.plot(range(len(y_test_label)), y_test_label, color = 'blue', label = 'Real value', marker = 'o')
-        plt.plot(range(len(y_pred_label)), y_pred_label, color = 'red', label = 'Estimated value', marker = 'o')
-        plt.title(f"Estimation of energy drain [xgboost model_{label}]", fontweight='bold')
-        plt.ylabel('Energy drain', fontweight='bold')
-        plt.xlabel('Test Case', fontweight='bold')
-        plt.legend()
         plt.show()

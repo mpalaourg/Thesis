@@ -1,4 +1,4 @@
-# Xgboost parameter tuning ...
+# Xgboost final parameter tuning ...
 import pandas
 import numpy as np
 import os
@@ -16,16 +16,24 @@ if __name__== "__main__" :
     df = pandas.get_dummies(df, columns = ["GPS", "Bluetooth", "Connectivity"])
     #df = df.drop(["GPS", "Bluetooth", "Connectivity"], axis=1)
     
-    # Create param grids for each model individual (if i want)
-    # Many attempts before that, that show -> n_estimators=1000
-    learning_rates = [0.03, 0.04, 0.05, 0.06, 0.07, 0.1]
-    max_depths = [6, 7, 8, 9]
-    colsample_bytree=[0.50, 0.55, 0.60, 0.65]
-    reg_lambda = [0.30, 0.35, 0.40]
-    param_grid = {'learning_rate': learning_rates, 'max_depth': max_depths, 
+    # Create param grids for each model individual
+    n_estimators = [i for i in range(600, 1200, 100)]
+    learning_rates = [0.03, 0.04, 0.05, 0.06, 0.07]
+    max_depths = [4, 5, 6, 7, 8]
+    colsample_bytree = [0.35, 0.40, 0.45, 0.50] #[0.50, 0.55, 0.60, 0.65]
+    reg_lambda = [0.20, 0.25, 0.30, 0.35] # [0.30, 0.35, 0.40, 0.45]
+    param_grid = {'n_estimators': n_estimators, 'learning_rate': learning_rates, 'max_depth': max_depths, 
                   'colsample_bytree': colsample_bytree, 'reg_lambda': reg_lambda}
 
-    param_grids = [param_grid, param_grid]    
+    param_grids = [param_grid, param_grid, param_grid]    
+    
+    # The selected column names for each label
+    column_0 = ['Brightness^2', 'temperature Brightness', 'usage Brightness', 'level', 'Brightness', 'level^2', 
+                'level Brightness', 'usage^2', 'level temperature']
+    column_1 = ['Brightness^2', 'usage Brightness', 'Brightness', 'temperature Brightness', 'level temperature', 'level^2', 
+                'level Brightness', 'Brightness RAM', 'level', 'level RAM']
+    selColumns = [column_0, column_1]
+
     labels = [0, 1] # The only meaningfull clusters and with the necessarily points
     for idx, label in enumerate(labels):
         df_label = df[ (df["label"] == label) ]
@@ -50,18 +58,21 @@ if __name__== "__main__" :
         
         for column in columnNames:
             df_label[column] = pandas.Series( df_label_Num[column] )
-
+        
         # Get dataframes 
         y_label = df_label["output"]
         X_label = df_label.drop(["output"], axis=1)
         
+        # Keep only the selected columns for each labels
+        X_label = X_label[selColumns[idx]]
+
         # Split data training and testing ...
         X_train_label, X_test_label, y_train_label, y_test_label = train_test_split(X_label, y_label, test_size=0.25, random_state=42)
         
         # Create the model
-        regressor = XGBRegressor(n_estimators=1000)
+        regressor = XGBRegressor()
         
-        # find optimal alpha with grid search (test if grid search is working)
+        # find optimal values with grid search (test if grid search is working)
         #n_estimators = [100] 
         #learning_rates = [0.1]
         #max_depths = [2]

@@ -14,12 +14,17 @@ from sklearn import metrics
 
 # Plot correlation for the columns of the dataframe
 def plotCorr(df):
-    numDF = df.copy()
+    umDF = df.copy()
     numDF = numDF.drop(["Hotspot"], axis=1)
     f = plt.figure(figsize=(11, 11))
     corr = numDF.corr()
-    sns.heatmap(corr, cmap = 'coolwarm', annot=True)
-    plt.show()
+    ax = sns.heatmap(corr, cmap = 'coolwarm', annot=True, annot_kws={"weight": "bold"})
+    for label in ax.get_yticklabels():
+      label.set_weight("bold")
+    for label in ax.get_xticklabels():
+      label.set_weight("bold")
+    #plt.show()
+    plt.savefig(f"initial_corr.png", format='png')
     print(corr)
 
 # Compute the dendrogram and plot it ...
