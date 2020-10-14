@@ -5,7 +5,6 @@ from math import floor
 from collections import Counter
 
 windowLength = 50   #seconds
-#windowDist   = 15   # seconds
 
 # Check if a file is a Discharge Session and battery has drop
 def isDischarge(df):
@@ -38,6 +37,7 @@ def majorityVote(votes):
 if __name__ == "__main__":
     print("Gettting the window measurements ...")
     current_directory = os.getcwd()
+    # rawFiles has the files as exported and checked from the Database
     raw_directory = current_directory + '\\rawFiles'
     currentFileList = os.listdir(raw_directory)
 
@@ -85,9 +85,8 @@ if __name__ == "__main__":
                 windowBrightness.append( round(brightness[start:end].mean(), 0) )
                 windowInteractive.append( isEnable(interactive[start:end]) )
                 
-                #start = getIndex(start=start, time=time, distance=windowDist)
                 prev_start = start
-                start = end
+                start = end         # The start for the next window is at the end of the previous one
             # Create the new dataframe
             dfSave = pandas.DataFrame()
             dfSave["level"] = windowLevel
@@ -105,6 +104,7 @@ if __name__ == "__main__":
             dfSave["Brightness"] = windowBrightness
             dfSave["isInteractive"] = windowInteractive
             
+            # windowFiles has the same Files, but grouped at time Windows for smoothing
             fileNameSave = current_directory + "\\windowFiles\\" + csvFile
             dfSave.to_csv(fileNameSave, ",", index=False) 
             print(f"Done with file: {fileNameSave}")

@@ -1,3 +1,5 @@
+## Hierarchical Clustering exploring the best linkage
+
 import pandas
 import numpy as np
 import os
@@ -10,21 +12,20 @@ from scipy.spatial.distance import squareform
 from sklearn.cluster import AgglomerativeClustering
 from sklearn import metrics
 
+# Plot correlation for the columns of the dataframe
 def plotCorr(df):
     numDF = df.copy()
+    numDF = numDF.drop(["Hotspot"], axis=1)
     f = plt.figure(figsize=(11, 11))
     corr = numDF.corr()
-    plt.matshow(corr, fignum=f.number)
-    plt.xticks(range(numDF.shape[1]), numDF.columns, fontsize=14, rotation=90)
-    plt.yticks(range(numDF.shape[1]), numDF.columns, fontsize=14)
-    cb = plt.colorbar()
-    cb.ax.tick_params(labelsize=14)
+    sns.heatmap(corr, cmap = 'coolwarm', annot=True)
     plt.show()
     print(corr)
 
+# Compute the dendrogram and plot it ...
 def plot_dendrogram(model, **kwargs):
     plt.figure(figsize=(19.20,9.83))
-    plt.title(f"Hierarchical Clustering Linkage = {param}")
+    plt.title(f"Dendrogram for linkage = {param}", fontsize=23, fontweight='bold')
     # Create linkage matrix and then plot the dendrogram
 
     # create the counts of samples under each node
@@ -44,15 +45,20 @@ def plot_dendrogram(model, **kwargs):
 
     # Plot the corresponding dendrogram
     dendrogram(linkage_matrix, **kwargs)
-    plt.xlabel("Number of points in node (or index of point if no parenthesis).")
+    plt.xlabel("Number of points in node (or index of point if no parenthesis)", fontsize=20,fontweight='bold')
+    plt.xticks(fontsize= 15)
+    plt.ylabel("Distance", fontsize=20, fontweight='bold')
+    plt.yticks(fontsize= 15)
     #plt.show()
 
+# For a linkage parameter compute the dendogram, call plot_dendrogram and save the figure ...
 def fullTree(param, distance):
     model = AgglomerativeClustering(distance_threshold=0, n_clusters=None, affinity="precomputed", linkage=param).fit(distance)
-    # plot the top three levels of the dendrogram
+    # plot the top five levels of the dendrogram
     plot_dendrogram(model, truncate_mode='level', p=5)
     plt.savefig(f"{param}.png", format='png')
 
+# Plot the mean silhouette for different number of clusters ...
 def plotSilhouette(param, distance):
     silh = []
     for cluster in range(2,20):
@@ -62,57 +68,51 @@ def plotSilhouette(param, distance):
         #silhouette_score = metrics.silhouette_score(distance, labels, metric="precomputed")
         #print(f"silhouette = {silhouette_score} for clusters = {cluster}")
     plt.figure(figsize=(19.20,9.83))
-    plt.title(f"Linkage = {param}")
+    plt.title(f"Mean Silhouette for Linkage = {param}", fontsize=23, fontweight='bold')
     plt.plot(range(2,20), silh)
-    plt.xlabel("Number of clusters")
-    plt.ylabel("silhouette")
+    plt.xlabel("Number of clusters", fontsize=20, fontweight='bold')
+    plt.xticks(fontsize= 15)
+    plt.ylabel("Mean Silhouette", fontsize=20, fontweight='bold')
+    plt.yticks(fontsize= 15)
     plt.savefig(f"{param}_silhouette.png", format='png')
 
 if __name__ == "__main__":
     print("Clustering ...")
     current_directory = os.getcwd()
-    df = pandas.read_csv(f"{current_directory}\\combinedTrain_csv.csv")
-    df = df.drop(["level", "temperature", "voltage", "status", "health"], axis=1) # I want Phone Usage
+    # combinedDataset_sameCap.csv is the file created for the experiment one from 'output.py'
+    df = pandas.read_csv(f"{current_directory}\\combinedDataset_sameCap.csv")
+        
+    df = df.drop(["level", "temperature", "voltage", "status", "health", "output"], axis=1) # I want Phone Usage
     df["Connectivity"] = df["Cellular"] | df["WiFi"]
     df = df.drop(["WiFi", "Cellular", "isInteractive"], axis=1) # Cause of correlation between columns
-    #df = df.sample(frac=0.01) # Sample part of dataframe 
-    print(df.describe())
-    plotCorr(df)
-    #distance = gower.gower_matrix(df)
-    #print("Done with distance!")
-    #del df
-    #  scipy.cluster: The symmetric non-negative hollow observation matrix looks suspiciously like an uncondensed distance matrix
-    #condensedDst = squareform(distance)
+    
+    # Uncomment for dataframe description #
+    #print(df.describe())
+    #plotCorr(df)
+
+    # After the first run, you don't have to compute the distance matrix again. You can read it from the pickle file
+    distance = gower.gower_matrix(df)
+    #with open("distance.pickle","wb") as f:
+    #    pickle.dump(distance, f)
+    #distance = pickle.load( open( "distance.pickle", "rb" ) )
+    print("Done with distance!")
+    del df
+
+    # Compute the condensed distance matrix for the linkage and cophenetic
+    condensedDst = squareform(distance)
     #del distance
+
     ''' From the linkage function Definition
     Methods 'centroid', 'median' and 'ward' are correctly defined only if Euclidean pairwise metric is used. If `y` is passed as precomputed
     pairwise distances, then it is a user responsibility to assure that these distances are in fact Euclidean, otherwise the produced result
     will be incorrect.
     '''
-    #modelAverage  = AgglomerativeClustering(n_clusters=9, affinity="precomputed", linkage='average').fit(distance)
-    #labels = modelAverage.fit_predict(distance)
-    #silhouette_score = metrics.silhouette_score(distance, labels, metric="precomputed")
-    #print(f"silhouette = {silhouette_score} for average and 9 clusters.")
-    
-    #modelComplete = AgglomerativeClustering(n_clusters=6, affinity="precomputed", linkage='complete').fit(distance)
-    #labels = modelComplete.fit_predict(distance)
-    #silhouette_score = metrics.silhouette_score(distance, labels, metric="precomputed")
-    #print(f"silhouette = {silhouette_score} for complete and 6 clusters.")
 
-    # Save models to avoid training yet again
-    #with open("modelAverage.pickle","wb") as f:
-    #    pickle.dump(modelAverage, f)
-    #with open("modelComplete.pickle","wb") as f:
-    #    pickle.dump(modelComplete, f)
-    
-    '''
     params = ['single', 'complete', 'average']
-    #params = ['average']
     for param in params:
         print(param)
-        #fullTree(param, distance)
+        fullTree(param, distance)
         Zd = linkage(condensedDst, method=param, metric='precomputed')
         cophe_dists = cophenet(Zd, condensedDst)  # The cophentic correlation distance.
         print(cophe_dists[0])
-        #plotSilhouette(param, distance)
-    '''
+        plotSilhouette(param, distance)
