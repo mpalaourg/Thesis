@@ -80,7 +80,7 @@ pip install xgboost
 
 ## Tecnologies 
 
-<img src="https://github.com/mpalaourg/Thesis/blob/master/data/images/java8%20icon.png" alt="Java" width="50" height="50"> for developing `BatteryApp`. <br>
+<img src="https://github.com/mpalaourg/Thesis/blob/master/data/images/java8%20icon.png" alt="Java" width="50" height="50"> for developing [<b>BatteryApp</b>](https://play.google.com/store/apps/details?id=gr.auth.ee.issel.batteryapp). <br>
 <img src="https://github.com/mpalaourg/Thesis/blob/master/data/images/python.png" alt="Python" width="50" height="50"> for analysing the data. (`Tested on 3.7.7`) <br>
 <img src="https://github.com/mpalaourg/Thesis/blob/master/data/images/flask.png" alt="Flask" width="100" height="35">, <img src="https://github.com/mpalaourg/Thesis/blob/master/data/images/waitress.png" alt="Waitress" width="100" height="35"> for the server. <br>
 <img src="https://github.com/mpalaourg/Thesis/blob/master/data/images/mongodb.jpg" alt="MongoDB" width="100" height="35">  for the database.
