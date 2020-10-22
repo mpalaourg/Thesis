@@ -10,12 +10,12 @@ def dSOC_dt(df, start, end):
     if initialLevel - finalLevel != 0:
         numberOfWindows = (end-1)-start+1
         duration = numberOfWindows * windowLength
-        currentRate = ( (initialLevel - finalLevel) * 100) / duration       # [% change] / [second] -duration in second
+        currentRate = ( (initialLevel - finalLevel) * 100) / duration       # [% change] / [second] - duration in second
     else:
         currentRate = 0 # for safety, if level hasn't change.
     
     # each number of Window has the same share at the changing of the level
-    dSOC = [currentRate*windowLength for i in range(numberOfWindows)]      # [% change] / [window] -duration in window
+    dSOC = [currentRate*windowLength for i in range(numberOfWindows)]      # [% change] / [window] - duration in window
     return dSOC
 
 if __name__ == "__main__":

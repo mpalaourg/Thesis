@@ -93,13 +93,13 @@ if __name__ == "__main__":
     
     # Uncomment for dataframe description #
     #print(df.describe())
-    plotCorr(df)
+    #plotCorr(df)
 
     # After the first run, you don't have to compute the distance matrix again. You can read it from the pickle file
-    #distance = gower.gower_matrix(df)
-    #with open("distance.pickle","wb") as f:
-    #    pickle.dump(distance, f)
-    distance = pickle.load( open( "distance.pickle", "rb" ) )
+    distance = gower.gower_matrix(df)
+    with open("distance.pickle","wb") as f:
+        pickle.dump(distance, f)
+    #distance = pickle.load( open( "distance.pickle", "rb" ) )
     print("Done with distance!")
     del df
 
