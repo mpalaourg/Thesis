@@ -18,7 +18,11 @@ def plotCorr(df):
     numDF = numDF.drop(["Hotspot"], axis=1)
     f = plt.figure(figsize=(11, 11))
     corr = numDF.corr()
-    sns.heatmap(corr, cmap = 'coolwarm', annot=True)
+    ax = sns.heatmap(corr, cmap = 'coolwarm', annot=True, annot_kws={"weight": "bold"})
+    for label in ax.get_yticklabels():
+      label.set_weight("bold")
+    for label in ax.get_xticklabels():
+      label.set_weight("bold")
     plt.show()
     print(corr)
 
@@ -92,8 +96,8 @@ if __name__ == "__main__":
 
     # After the first run, you don't have to compute the distance matrix again. You can read it from the pickle file
     distance = gower.gower_matrix(df)
-    #with open("distance.pickle","wb") as f:
-    #    pickle.dump(distance, f)
+    with open("distance.pickle","wb") as f:
+        pickle.dump(distance, f)
     #distance = pickle.load( open( "distance.pickle", "rb" ) )
     print("Done with distance!")
     del df

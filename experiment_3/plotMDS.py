@@ -60,7 +60,6 @@ if __name__ == "__main__":
     #df=df[:1000]
     distance = gower.gower_matrix(df)
 
-    # Use of previous distance NxN
     #modelAverage = pickle.load( open( "modelAverage.pickle", "rb" ) )
     #labels = modelAverage.fit_predict(distance)
     #del modelAverage

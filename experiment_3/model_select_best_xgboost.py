@@ -1,4 +1,4 @@
-# Xgboost best models ...
+# Xgboost best selected models ...
 import pandas
 import numpy as np
 import os
@@ -87,7 +87,7 @@ if __name__== "__main__" :
         plt.xlabel("Feature importance", fontweight='bold')
         plt.show()
         
-        ''' Uncomment for ploting ...
+        #''' Uncomment for ploting ...
         # Plotting selected model ...
         y_pred_label = regressor.predict(X_test_label)
         y_pred_label[ np.where(y_pred_label < 0) ] = 0 
@@ -122,4 +122,3 @@ if __name__== "__main__" :
         axs[1].set_xlabel('Test Case', fontweight='bold')
         axs[1].legend()
         plt.show()
-        '''

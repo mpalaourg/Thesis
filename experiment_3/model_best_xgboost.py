@@ -101,7 +101,7 @@ if __name__== "__main__" :
         plt.show()
         '''
         
-        ''' Uncomment for ploting ...
+        #''' Uncomment for ploting ...
         # Plotting initial model ...
         y_pred_label = regressor.predict(X_test_label)
         y_pred_label[ np.where(y_pred_label < 0) ] = 0 
@@ -136,4 +136,3 @@ if __name__== "__main__" :
         plt.xlabel('Test Case', fontweight='bold')
         plt.legend()
         plt.show()
-        '''

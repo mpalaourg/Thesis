@@ -23,8 +23,7 @@ def plotCorr(df):
       label.set_weight("bold")
     for label in ax.get_xticklabels():
       label.set_weight("bold")
-    #plt.show()
-    plt.savefig(f"initial_corr.png", format='png')
+    plt.show()
     print(corr)
 
 # Compute the dendrogram and plot it ...

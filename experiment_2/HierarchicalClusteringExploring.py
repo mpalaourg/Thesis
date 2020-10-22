@@ -14,7 +14,7 @@ from sklearn import metrics
 
 # Plot correlation for the columns of the dataframe
 def plotCorr(df):
-    umDF = df.copy()
+    numDF = df.copy()
     numDF = numDF.drop(["Hotspot"], axis=1)
     f = plt.figure(figsize=(11, 11))
     corr = numDF.corr()
@@ -23,8 +23,7 @@ def plotCorr(df):
       label.set_weight("bold")
     for label in ax.get_xticklabels():
       label.set_weight("bold")
-    #plt.show()
-    plt.savefig(f"initial_corr.png", format='png')
+    plt.show()
     print(corr)
 
 # Compute the dendrogram and plot it ...
