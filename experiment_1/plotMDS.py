@@ -57,7 +57,6 @@ if __name__ == "__main__":
     df = df.drop(["WiFi", "Cellular", "isInteractive"], axis=1) # Cause of correlation between columns
     distance = gower.gower_matrix(df)
 
-    # Use of previous distance NxN
     #modelAverage = pickle.load( open( "modelAverage.pickle", "rb" ) )
     #labels = modelAverage.fit_predict(distance)
     #del modelAverage

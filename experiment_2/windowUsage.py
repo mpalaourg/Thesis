@@ -4,7 +4,7 @@ import numpy as np
 from math import floor
 from collections import Counter
 
-windowLength = 50   #seconds
+windowLength = 50   # seconds
 
 # Check if a file is a Discharge Session and battery has drop
 def isDischarge(df):

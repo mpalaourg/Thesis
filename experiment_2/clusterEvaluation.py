@@ -6,7 +6,9 @@ import os
 
 def boxplotAll(current_directory):
     #df = pandas.read_csv(f"{current_directory}\\labeled_combinedDataset_Average.csv") 
-    df = pandas.read_csv(f"{current_directory}\\labeled_combinedDataset_Complete.csv")
+    #df = pandas.read_csv(f"{current_directory}\\labeled_combinedDataset_Complete.csv")
+
+    df = pandas.read_csv(f"{current_directory}\\labeled_combinedDataset.csv")
 
     labels = df.label
     labels = list( set(labels) )

@@ -71,13 +71,13 @@ if __name__== "__main__" :
         pair=zip(importances, feature_list)
         pair=sorted(pair, reverse=False)
         feature_list = [feature for _, feature in pair]
-        importances = [importance for importance, _ in pair]
+        importances = [round(importance, 2) for importance, _ in pair]
         plt.title(f"Feature Importance [xgboost model_{label}]", fontweight='bold')
         plt.barh(feature_list, importances)
         plt.xlabel("Feature importance", fontweight='bold')
         plt.show()
         
-        #''' Uncoment to compute best threshold for importance via cross validation on Train set
+        ''' Uncoment to compute best threshold for importance via cross validation on Train set
         # Fit model using each importance as a threshold
         thresholds = np.sort(regressor.feature_importances_)
         MAEs=[]
@@ -99,7 +99,7 @@ if __name__== "__main__" :
         plt.ylabel('Mean MAE', fontweight='bold')
         plt.xlabel('Feature importance threshold', fontweight='bold')
         plt.show()
-
+        '''
         
         #''' Uncomment for ploting ...
         # Plotting initial model ...
