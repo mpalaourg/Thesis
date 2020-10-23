@@ -111,7 +111,7 @@ sudo nano /etc/mongod.conf
 In this file modify the following lines:
 ```sh
   net:
-    port: 27017
+    port: <MONGO_PORT>
     bindIp: 0.0.0.0   #default value is 127.0.0.1
 ```
 Restart mongo service
