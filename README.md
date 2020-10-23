@@ -100,4 +100,4 @@ Reach out to me:
 ---
 
 ## Licence 
-[](https://img.shields.io/github/license/mpalaourg/Thesis?style=flat-square)
+![Licence: GPL](https://img.shields.io/github/license/mpalaourg/Thesis?style=flat-square)
