@@ -35,48 +35,48 @@ pip install xgboost
 ---
 
 ## Raw data variables 
-### Battery
+### Battery informations
 | Name | Description |
 |------|-------------|
-|<p align=center> level </p>| The current battery level `[0-100]`.|
-|<p align=center> temperature </p>| The current battery temperature in °C.|
-|<p align=center> voltage </p>| The current battery voltage level in V.|
-|<p align=center> technology </p>| String describing the technology of the current battery.|
-|<p align=center> status </p>| [Categorical variable](https://developer.android.com/reference/android/os/BatteryManager#EXTRA_STATUS) for the current battery status.|
-|<p align=center> health </p>| [Categorical variable](https://developer.android.com/reference/android/os/BatteryManager#EXTRA_HEALTH) for the current battery health.|
-|<p align=center> availCapacityPercentage </p>| The current battery capacity remaining `[0-100]`.|
+| level | The current battery level `[0-100]`.|
+| temperature | The current battery temperature in °C.|
+| voltage | The current battery voltage level in V.|
+| technology | String describing the technology of the current battery.|
+| status | [Categorical variable](https://developer.android.com/reference/android/os/BatteryManager#EXTRA_STATUS) for the current battery status.|
+| health | [Categorical variable](https://developer.android.com/reference/android/os/BatteryManager#EXTRA_HEALTH) for the current battery health.|
+| availCapacityPercentage | The current battery capacity remaining `[0-100]`.|
 
-### Phone Usage
+### Phone usage informations 
 | Name | Description |
 |------|-------------|
-|<p align=center> usage </p>| The estimation of the current CPU load `[0-100]`.|
-|<p align=center> WiFi </p>| Boolean variable if WiFi is enable.|
-|<p align=center> Cellular </p>| Boolean variable if Cellular Data Connection is enable.|
-|<p align=center> Hotspot </p>| Boolean variable if the device its used as a WiFi access point.|
-|<p align=center> GPS </p>| Boolean variable if GPS is enable.|
-|<p align=center> Bluetooth </p>| Boolean variable if Bluetooth is enable.|
-|<p align=center> RAM </p>| The current percentage of available RAM `[0-100]`.|
-|<p align=center> Brightness </p>| The current screen brightness.|
-|<p align=center> isInteractive </p>| Boolean variable if the user interacts with the device.|
+| usage | The estimation of the current CPU load `[0-100]`.|
+| WiFi | Boolean variable if WiFi is enable.|
+| Cellular | Boolean variable if Cellular Data Connection is enable.|
+| Hotspot | Boolean variable if the device its used as a WiFi access point.|
+| GPS | Boolean variable if GPS is enable.|
+| Bluetooth | Boolean variable if Bluetooth is enable.|
+| RAM | The current percentage of available RAM `[0-100]`.|
+| Brightness | The current screen brightness.|
+| isInteractive | Boolean variable if the user interacts with the device.|
 
-### Logistics
+### Logistics informations
 | Name | Description |
 |------|-------------|
-|<p align=center> _id </p>| Database `id` unique for each measurement.|
-|<p align=center> ID </p>| The unique user `ID` used for anonymity reasons.|
-|<p align=center> SampleFreq </p>| The user specified sampling frequency (`Default: 10 seconds`).|
-|<p align=center> brandModel </p>| The brand and model of the device.|
-|<p align=center> androidVersion </p>| The android version of the device.|
-|<p align=center> Timestamp </p>| Unix timestamp of each measurement.|
+| _id | Database `id` unique for each measurement.|
+| ID | The unique user `ID` used for anonymity reasons.|
+| SampleFreq | The user specified sampling frequency (`Default: 10 seconds`).|
+| brandModel | The brand and model of the device.|
+| androidVersion | The android version of the device.|
+| Timestamp | Unix timestamp of each measurement.|
 
 ---
 
 ## Directory Structure <br>
 ├── <b><ins>..</ins></b> <br>
 &nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>BatteryApp</ins></b>: Contains the source code of `BatteryApp`. <br>
-&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>experiment_1</ins></b>: Experiment based on <i>all</i> Sessions of <b>one user</b>. <br>
-&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>experiment_2</ins></b>: Experiment based on Sessions <i>under `30` minutes</i> of <b> all users with at least `20` files</b>. <br>
-&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>experiment_3</ins></b>: Experiment based on Sessions <i>under `30` minutes</i> of <b> all users with at least `20` files & same total battery capacity</b>. <br>
+&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>experiment_1</ins></b>: <i>all</i> Sessions of <b>one user</b>. <br>
+&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>experiment_2</ins></b>: Sessions <i>under `30` minutes</i> of <b> all users with at least `20` files</b>. <br>
+&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>experiment_3</ins></b>: Sessions <i>under `30` minutes</i> of <b> all users with at least `20` files & same total battery capacity</b>. <br>
 &nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>server</ins></b>: Contains the scripts for the server and the database. <br>
 &nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>preprocessing</ins></b>: Contains the scripts for exporting and preprocessing the data.<br>
 &nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>data/csvFiles</ins></b>: Contains the files as exported and checked from the Database.<br>
@@ -100,5 +100,4 @@ Reach out to me:
 ---
 
 ## Licence 
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/mpalaourg/Thesis/blob/master/LICENSE)
+[](https://img.shields.io/github/license/mpalaourg/Thesis?style=flat-square)
