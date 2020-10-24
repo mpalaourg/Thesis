@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.batteryapp">
+    package="gr.auth.ee.issel.batteryapp">
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -17,8 +17,8 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/AppTheme">
 
-        <receiver android:name=".AlarmReceiver"> </receiver>
-        <activity android:name=".MainActivity"
+        <receiver android:name="gr.auth.ee.issel.batteryapp.AlarmReceiver"> </receiver>
+        <activity android:name="gr.auth.ee.issel.batteryapp.MainActivity"
             android:screenOrientation="portrait" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".MyService" />
+        <service android:name="gr.auth.ee.issel.batteryapp.MyService" />
     </application>
 
 </manifest>
