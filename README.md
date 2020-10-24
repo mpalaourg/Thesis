@@ -41,25 +41,25 @@ pip install xgboost
 | level | The current battery level `[0-100]`.|
 | temperature | The current battery temperature in °C.|
 | voltage | The current battery voltage level in V.|
-| technology | String describing the technology of the current battery.|
+| technology | String describing the technology of the battery.|
 | status | [Categorical variable](https://developer.android.com/reference/android/os/BatteryManager#EXTRA_STATUS) for the current battery status.|
 | health | [Categorical variable](https://developer.android.com/reference/android/os/BatteryManager#EXTRA_HEALTH) for the current battery health.|
-| availCapacityPercentage | The current battery capacity remaining `[0-100]`.|
+| availCapacityPercentage | The current remaining battery capacity `[0-100]`.|
 
 ### Phone usage informations 
 | Name | Description |
 |------|-------------|
 | usage | The estimation of the current CPU load `[0-100]`.|
-| WiFi | Boolean variable if WiFi is enable.|
-| Cellular | Boolean variable if Cellular Data Connection is enable.|
+| WiFi | Boolean variable if WiFi is enabled.|
+| Cellular | Boolean variable if Cellular Data Connection is enabled.|
 | Hotspot | Boolean variable if the device its used as a WiFi access point.|
-| GPS | Boolean variable if GPS is enable.|
-| Bluetooth | Boolean variable if Bluetooth is enable.|
+| GPS | Boolean variable if GPS is enabled.|
+| Bluetooth | Boolean variable if Bluetooth is enabled.|
 | RAM | The current percentage of available RAM `[0-100]`.|
 | Brightness | The current screen brightness.|
 | isInteractive | Boolean variable if the user interacts with the device.|
 
-### Logistics informations
+### Logistic informations
 | Name | Description |
 |------|-------------|
 | _id | Database `id` unique for each measurement.|
@@ -77,7 +77,7 @@ pip install xgboost
 &nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>experiment_1</ins></b>: <i>all</i> Sessions of <b>one user</b>. <br>
 &nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>experiment_2</ins></b>: Sessions <i>under `30` minutes</i> of <b> all users with at least `20` files</b>. <br>
 &nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>experiment_3</ins></b>: Sessions <i>under `30` minutes</i> of <b> all users with at least `20` files & same total battery capacity</b>. <br>
-&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>server</ins></b>: Contains the scripts for the server and the database. <br>
+&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>server</ins></b>: Contains the scripts for hosting the server and the database. <br>
 &nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>preprocessing</ins></b>: Contains the scripts for exporting and preprocessing the data.<br>
 &nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <b><ins>data/csvFiles</ins></b>: Contains the files as exported and checked from the Database.<br>
 

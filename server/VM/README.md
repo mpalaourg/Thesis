@@ -2,8 +2,7 @@
 > Virtual Machine	in okeanos.grnet.gr -> `Ubuntu 16.04.3 LTS`
 
 ## Connect to VM
-
-The connection is established via ssh:
+The connection is established via `ssh`:
 ```sh
 ssh user@VM_IP
 <MySuperSecretSSHPassword>
@@ -12,7 +11,7 @@ ssh user@VM_IP
 ---
 
 ## Setup Virtual Machine
-First, transfer the Server file to the VM.
+First, transfer the `Server.py` file to VM.
 ```sh
 scp Server.py user@VM_IP:~
 ```
@@ -48,11 +47,11 @@ and check the user connected with
 ```sh
 db.runCommand( {connectionStatus: 1})
 ```
-We will use this user to generate the low priviliges user `<MONGO_USER>`. Then, create a database `<AUTH_DB>` for holding `<MONGO_USER>` permissions.
+We will use this user to generate the low priviliges user `<MONGO_USER>`. First, create a database `<AUTH_DB>` for holding `<MONGO_USER>` permissions.
 ```sh
 use <AUTH_DB>
 ```
-Create user `<MONGO_USER>` (connected as `<ADMIN_USER>`)
+Then, create user `<MONGO_USER>` (connected as `<ADMIN_USER>`)
 ```sh
 db.createUser(
   {
@@ -66,7 +65,7 @@ Connect to `<MONGO_USER>` via
 ```sh
 mongo --port <MONGO_PORT> -u <MONGO_USER> -p <MONGO_USER_PASSWORD> --authenticationDatabase <AUTH_DB>
 ```
-To have users with roles, we must enable security at `/etc/mongod.conf`
+To have users with roles, security must be enabled at `/etc/mongod.conf`
 ```sh
 sudo nano /etc/mongod.conf
 ```
@@ -82,8 +81,8 @@ sudo service mongod restart
 
 ---
 
-## Run Server Script
-To run the server script even when we aren't connected with the VM ```screen``` will be used. You can check if it is installed on your system by typing:
+## Execute server script
+To execute the server script even when you aren't connected to VM ```screen``` will be used. You can check if it is installed on your system by typing:
 ```sh
 screen --version
 ```
@@ -95,7 +94,7 @@ Start, a new screen session via
 ```sh
 screen -S sessionName
 ```
-Inside the session, run the server script with:
+Inside the session, execute the server script with:
 ```sh
 python3 Server.py &
 ```
@@ -103,12 +102,12 @@ To minimize this session, use ```Ctrl+a Ctrl+d``` and to reattach with the linux
 
 ---
 
-## Backup the database
+## Backup the Database
 Activate remote access, by modifying `/etc/mongod.conf`
 ```sh
 sudo nano /etc/mongod.conf
 ```
-In this file modify the following lines:
+In this file change the following lines:
 ```sh
   net:
     port: <MONGO_PORT>
@@ -118,7 +117,7 @@ Restart mongo service
 ```sh
 sudo service mongod restart
 ```
-and from your PC run:
+and from your PC's terminal run:
 ```sh
 mongodump --uri="mongodb://<MONGO_USER>:<MONGO_USER_PASSWORD>@<VM_IP>:<MONGO_PORT>/<DB_NAME>?authSource=<AUTH_DB>" -o your/desired/path/.
 ```

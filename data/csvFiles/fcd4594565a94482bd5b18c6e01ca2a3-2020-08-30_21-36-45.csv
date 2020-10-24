@@ -1,0 +1,4 @@
+_id,ID,level,temperature,voltage,technology,status,health,usage,WiFi,Cellular,Hotspot,GPS,Bluetooth,RAM,Brightness,isInteractive,SampleFreq,brandModel,androidVersion,availCapacityPercentage,Timestamp
+5f4c1dc774fece020663bec5,fcd4594565a94482bd5b18c6e01ca2a3,47,37,3.767,Li-poly,3,2,100,true,false,false,false,false,27.22,2230,true,10,xiaomi-Redmi Note 5,9,46,1598812605459
+5f4c1dc774fece020663bec6,fcd4594565a94482bd5b18c6e01ca2a3,47,37,3.767,Li-poly,3,2,41,true,false,false,false,false,28.24,2230,true,10,xiaomi-Redmi Note 5,9,46,1598812615458
+5f4c1dc774fece020663bec7,fcd4594565a94482bd5b18c6e01ca2a3,47,37,3.767,Li-poly,3,2,50,true,false,false,false,false,28.27,2230,true,10,xiaomi-Redmi Note 5,9,46,1598812625459
